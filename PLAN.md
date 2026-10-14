@@ -77,8 +77,9 @@ lunch-slot/
 - [x] T19: Web 서버 Nginx와 정적 파일(frontend/dist)·/api 프록시 구성. deploy/nginx/lunch-slot.conf 작성.
   확인: Web 주소로 등록·추천, DB 저장, App 재시작 후 유지.
   결과(2026-10-14): 서버 한 대(T17 결정)에서 진행. 80번은 task-flow가 사용 중이라 사용자 결정으로 8080번 사용. 변경 파일: deploy/nginx/lunch-slot.conf(8080, root /var/www/lunch-slot, upstream lunch_slot_api 127.0.0.1:8001, SPA 경로 index.html, /assets 1년 캐시, nosniff·X-Frame-Options·CSP), deploy/setup_web_server.sh(dist 복사, sites-enabled 연결, nginx -t 실패 시 되돌림 후 reload 안 함)(신규), PLAN.md. 실행: 임시 메인 설정으로 nginx -t 통과, 일반 사용자 nginx를 127.0.0.1:18080에 띄워 /·SPA 경로·assets·404·/api 프록시·422 확인 후 종료. 사용자가 npm run build 결과로 sudo bash deploy/setup_web_server.sh 실행 및 http://localhost:8080 화면 확인. 확인: 설정·정적 파일이 저장소·dist와 동일, 8080 / 200·/api/health 200, task-flow 80번 200 유지. 8080으로 등록(id 17)·추천 → SQL로 저장 확인, App 로그에 Nginx 경유 요청 기록. 사용자가 sudo systemctl restart lunch-slot-api 실행 → 시작 시각 18:06:06→18:11:05, PID 변경, 8080 조회 8건(id 17 포함) 유지. 확인 후 시험용 id 17 삭제(7건). 남은 오류 없음.
-- [ ] T20: PRD 완료 기준 전체 점검.
+- [x] T20: PRD 완료 기준 전체 점검.
   확인: 등록·빈 이름 거절·수정·삭제 취소·필터 중 수정·추천 조건·최근 방문 제외·재시작 후 유지·DB 정보 비노출·HTML 비실행.
+  결과(2026-10-14): 점검만 수행, 코드 변경 없음(변경 파일: PLAN.md). Web 주소(8080) 경유 API 점검 스크립트 17/17 PASS: 정상 등록(공백 제거·기본값·최신순), 빈 이름·공백·51자 422, 수정(보낸 필드만·category 422), 같은 이름 두 곳 중 필터로 보인 곳만 수정, 검색+필터 AND, 추천 분식 20회 조건 일치·후보 1곳 고정·후보 0곳 "조건에 맞는 식당이 없습니다", 방문 기록(VISITED·2회·오늘·평점 유지), SQL로 오늘/3일 전/4일 전 설정 후 N=3 30회 → 4일 전만, exclude_days 0·31 422, HTML·SQL 주입 문자열 글자 그대로 저장, PIZZA·평점 6·위치 101·메모 501 422. 시험 데이터(T20-*) 11건 삭제. 정적 점검: grep -rn "DB_PASSWORD\|lunch_slot" frontend/dist frontend/src /var/www/lunch-slot 결과 없음, .env 실제 접속 값 4개가 21개 파일과 8080 응답에 없음, .env는 Git 추적·이력 없음, frontend/src에 위험 HTML API 없음, 8080 응답에 CSP·nosniff 헤더. 사용자가 8080 화면에서 삭제 취소 시 유지, HTML 문자열 글자 표시(알림 없음) 확인 후 sudo systemctl restart lunch-slot-api 실행 → 시작 시각 18:16:26·PID 변경, 재시작 후 7건 유지, HTML 시험 행 남지 않음. PRD 완료 기준 전체 충족. 남은 오류 없음.
 ## 실행 기준
 T01~T04: cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
 T05~T16: 가상환경에서 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 --reload (T08부터 프론트도 함께 실행)
