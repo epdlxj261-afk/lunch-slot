@@ -17,8 +17,9 @@ lunch-slot/
   확인: node -v, npm -v, python3 --version, mariadb --version, nginx -v 모두 버전 출력.
   결과(2026-10-14): node v22.22.1, npm 9.2.0(sudo apt install -y npm으로 설치), Python 3.14.4, MariaDB 11.8.6, nginx 1.28.3 출력 확인. 변경 파일: PLAN.md. 남은 오류 없음.
 ## 2장: 브라우저 앱
-- [ ] T01: frontend에 Vite React 프로젝트 생성. App.jsx에 식당 이름 입력·등록·목록만 구현한다. (F01, F02)
+- [x] T01: frontend에 Vite React 프로젝트 생성. App.jsx에 식당 이름 입력·등록·목록만 구현한다. (F01, F02)
   확인: 두 곳 등록, 공백만 입력·51자 입력 거절, "  국밥  "은 "국밥"으로 표시. 새로고침하면 사라져도 정상이다.
+  결과(2026-10-14): npm create vite@latest(Vite 8.3, React 19.2)로 생성. 변경 파일: frontend/ 전체(src/App.jsx, src/App.css, src/index.css, index.html 수정, 템플릿 데모 이미지 src/assets/ 삭제), PLAN.md. 실행: npm run lint·npm run build 통과, npm run dev -- --host 127.0.0.1 --port 5173. 브라우저에서 두 곳 최신순 등록, 공백만·51자 거절, "  국밥  " → "국밥", 새로고침 시 초기화를 사용자가 확인. 남은 오류 없음.
 - [ ] T02: localStorage(lunch-slot-v1) 저장·복원. frontend/src/storage.js 추가.
   확인: 새로고침 후 유지. 저장값을 `abc`로 바꾸고 새로고침하면 "저장된 데이터를 읽을 수 없습니다" 표시, 등록 차단, 저장값 그대로 유지. "초기화" 확인 후에만 빈 목록으로 덮어쓰고 등록 가능.
 - [ ] T03: 이름 수정, 삭제 확인. 모두 id 기준. (F04 이름, F05)
