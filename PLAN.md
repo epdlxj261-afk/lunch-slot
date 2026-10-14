@@ -30,13 +30,14 @@ lunch-slot/
   확인: 이름만 등록 시 기타/1~2만 원/가보고 싶음/평점 없음. 수정 화면에는 이름·위치·메모만 있음. 검색+필터 AND 적용. 필터 중 수정·삭제가 정확한 항목에 적용.
   결과(2026-10-14): 변경 파일: frontend/src/constants.js·validation.js·components/RegisterForm.jsx·components/FilterBar.jsx(신규), src/App.jsx·components/RestaurantItem.jsx·storage.js·App.css, PLAN.md. 이전 단계 저장 항목은 불러올 때 기본값으로 채우고, 잘못된 값(category=PIZZA, rating=6 등)은 손상으로 처리. 실행: npm run lint(경고 없음)·npm run build 통과, Node로 storage 기본값·손상 판정과 위치 100/101자·메모 500/501자 검사 확인. 브라우저에서 이름만 등록 시 기본값 표시, 전체 항목 등록·새로고침 유지, 수정 화면 이름·위치·메모만 표시, 검색+필터 AND, 필터 중 수정·삭제 정확한 항목 적용, 위치·메모 길이 초과 거절을 사용자가 확인. 남은 오류 없음.
 ## 3장: API
-- [ ] T05: API-SPEC.md 작성, FastAPI /api/health 구현.
-  확인: curl localhost:8000/api/health 로 200과 status=ok.
+- [x] T05: API-SPEC.md 작성, FastAPI /api/health 구현.
+  확인: curl localhost:8001/api/health 로 200과 status=ok.
+  결과(2026-10-14): 변경 파일: API-SPEC.md, backend/main.py, backend/requirements.txt(fastapi 0.143.0, uvicorn[standard] 0.54.0), .gitignore(.venv/, __pycache__/) 신규, PLAN.md. 8000번은 다른 앱(Task Flow, /opt/task-flow)이 사용 중이라 사용자 결정으로 API 포트를 8001로 변경(T05 확인·T08 프록시·실행 기준 수정). API-SPEC에 exclude_days 미전달 시 제외 안 함, 최근 방문 제외의 오늘 기준은 브라우저가 보내는 today로 정함(사용자 결정). 실행: python3 -m venv .venv, .venv/bin/pip install -r backend/requirements.txt(Python 3.14 설치 문제 없음), .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 --reload. curl localhost:8001/api/health → 200, {"status":"ok"}, /openapi.json 제목이 "오늘 뭐 먹지? API"임을 확인. 남은 오류 없음.
 - [ ] T06: 메모리 기반 /api/restaurants GET과 POST. 서버에서도 이름·필드 검증.
   확인: /docs에서 등록 후 조회. 빈 이름, category=PIZZA, rating=6은 422.
 - [ ] T07: PATCH(name, location, memo만 허용)·DELETE와 검색·필터(q, category, price_range, visit_status) 구현.
   확인: 미전달 필드 유지, PATCH에 category 전달 시 422, 없는 ID 404, 삭제 204. 필터 결과가 AND 조건과 일치.
-- [ ] T08: 프런트엔드 저장 처리를 API 호출로 교체. vite.config.js에 /api → 8000 프록시. storage.js 삭제.
+- [ ] T08: 프런트엔드 저장 처리를 API 호출로 교체. vite.config.js에 /api → 8001 프록시. storage.js 삭제.
   확인: 화면과 curl 목록이 같음. API 중지 시 "서버에 연결할 수 없습니다" 표시. API 재시작 시 데이터가 사라지면 정상.
 ## 4장: DB
 - [ ] T09: backend/.env(DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)와 .env.example(가짜 값) 준비. .gitignore에 .env 추가. db/create_db.sh가 .env를 읽어 MariaDB 전용 사용자·DB(lunch_slot) 생성. 비밀번호는 .env에만 둔다.
@@ -66,7 +67,7 @@ lunch-slot/
   확인: 등록·빈 이름 거절·수정·삭제 취소·필터 중 수정·추천 조건·최근 방문 제외·재시작 후 유지·DB 정보 비노출·HTML 비실행.
 ## 실행 기준
 T01~T04: cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
-T05~T16: 가상환경에서 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload (T08부터 프론트도 함께 실행)
+T05~T16: 가상환경에서 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 --reload (T08부터 프론트도 함께 실행)
 DB 확인: mariadb -u lunch_app -p lunch_slot
 실제 존재하는 파일을 확인한 뒤 명령을 실행한다.
 ## 기록
