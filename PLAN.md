@@ -74,8 +74,9 @@ lunch-slot/
 - [x] T18: App 서버 코드·가상환경·환경변수·systemd 구성. --reload 없이 실행.
   확인: App에서 /api/health 응답.
   결과(2026-10-14): 서버 한 대(T17 결정)에서 진행. 변경 파일: deploy/systemd/lunch-slot-api.service, deploy/setup_app_server.sh(신규), PLAN.md. 코드·가상환경은 /opt/lunch-slot(root 소유), 서비스는 전용 사용자 lunchslot, 접속 정보는 /opt/lunch-slot/.env(root:lunchslot 640, 기존 파일은 덮어쓰지 않음), API_HOST=127.0.0.1·API_PORT=8001 설정값, ProtectSystem=strict·ProtectHome·NoNewPrivileges. 같은 서버의 task-flow-api(8000)와 이름·포트 겹치지 않음. 실행: 개발 서버(8001) 중지 후 사용자가 sudo bash deploy/setup_app_server.sh 실행. 확인: lunch-slot-api active·enabled, NRestarts=0, 프로세스 사용자 lunchslot·명령에 --reload 없음, curl localhost:8001/api/health → 200 {"status":"ok"}, 목록 7건(API 직접·5173 프록시 동일), /opt 배포 코드·서비스 파일이 저장소와 동일, /opt/lunch-slot/.env는 일반 사용자가 읽을 수 없음. 백엔드 변경 시 설치 스크립트 재실행 필요. 남은 오류 없음.
-- [ ] T19: Web 서버 Nginx와 정적 파일(frontend/dist)·/api 프록시 구성. deploy/nginx/lunch-slot.conf 작성.
+- [x] T19: Web 서버 Nginx와 정적 파일(frontend/dist)·/api 프록시 구성. deploy/nginx/lunch-slot.conf 작성.
   확인: Web 주소로 등록·추천, DB 저장, App 재시작 후 유지.
+  결과(2026-10-14): 서버 한 대(T17 결정)에서 진행. 80번은 task-flow가 사용 중이라 사용자 결정으로 8080번 사용. 변경 파일: deploy/nginx/lunch-slot.conf(8080, root /var/www/lunch-slot, upstream lunch_slot_api 127.0.0.1:8001, SPA 경로 index.html, /assets 1년 캐시, nosniff·X-Frame-Options·CSP), deploy/setup_web_server.sh(dist 복사, sites-enabled 연결, nginx -t 실패 시 되돌림 후 reload 안 함)(신규), PLAN.md. 실행: 임시 메인 설정으로 nginx -t 통과, 일반 사용자 nginx를 127.0.0.1:18080에 띄워 /·SPA 경로·assets·404·/api 프록시·422 확인 후 종료. 사용자가 npm run build 결과로 sudo bash deploy/setup_web_server.sh 실행 및 http://localhost:8080 화면 확인. 확인: 설정·정적 파일이 저장소·dist와 동일, 8080 / 200·/api/health 200, task-flow 80번 200 유지. 8080으로 등록(id 17)·추천 → SQL로 저장 확인, App 로그에 Nginx 경유 요청 기록. 사용자가 sudo systemctl restart lunch-slot-api 실행 → 시작 시각 18:06:06→18:11:05, PID 변경, 8080 조회 8건(id 17 포함) 유지. 확인 후 시험용 id 17 삭제(7건). 남은 오류 없음.
 - [ ] T20: PRD 완료 기준 전체 점검.
   확인: 등록·빈 이름 거절·수정·삭제 취소·필터 중 수정·추천 조건·최근 방문 제외·재시작 후 유지·DB 정보 비노출·HTML 비실행.
 ## 실행 기준
