@@ -240,3 +240,16 @@ textarea:disabled {
     animation: none;
   }
 }
+
+.decide-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.decide-message {
+  margin: 8px 0 0;
+  color: #2e7d32;
+}

@@ -12,6 +12,7 @@ const FIELD_LABELS = {
   memo: '메모',
   visit_status: '방문 상태',
   rating: '평점',
+  visited_on: '방문 날짜',
 }
 
 export class ApiError extends Error {
@@ -123,6 +124,16 @@ export async function updateRestaurant(id, { name, location, memo }) {
   const item = await request(`/restaurants/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ name, location, memo }),
+  })
+  return fromServer(item)
+}
+
+// "여기로 결정": visitedOn(브라우저 로컬 날짜 YYYY-MM-DD)으로 방문을 기록한다.
+// rating이 null이면 서버가 기존 평점을 유지한다.
+export async function recordVisit(id, { visitedOn, rating }) {
+  const item = await request(`/restaurants/${id}/visits`, {
+    method: 'POST',
+    body: JSON.stringify({ visited_on: visitedOn, rating }),
   })
   return fromServer(item)
 }

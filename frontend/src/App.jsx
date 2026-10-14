@@ -107,7 +107,7 @@ function App() {
     <main className="app">
       <h1>오늘 뭐 먹지?</h1>
 
-      <Recommendation />
+      <Recommendation onVisited={reload} />
 
       <RegisterForm onRegister={handleRegister} />
 

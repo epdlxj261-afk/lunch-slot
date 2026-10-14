@@ -7,6 +7,7 @@ from backend.schemas import (
     Restaurant,
     RestaurantCreate,
     RestaurantUpdate,
+    VisitCreate,
     VisitStatus,
 )
 
@@ -40,6 +41,14 @@ def create_restaurant(data: RestaurantCreate):
 def update_restaurant(restaurant_id: int, data: RestaurantUpdate):
     # 보낸 필드만 바꾸고 보내지 않은 필드는 유지한다.
     restaurant = repository.update_restaurant(restaurant_id, data.model_dump(exclude_unset=True))
+    if restaurant is None:
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+    return restaurant
+
+
+@app.post("/api/restaurants/{restaurant_id}/visits", response_model=Restaurant)
+def record_visit(restaurant_id: int, data: VisitCreate):
+    restaurant = repository.record_visit(restaurant_id, data.visited_on, data.rating)
     if restaurant is None:
         raise HTTPException(status_code=404, detail=NOT_FOUND)
     return restaurant

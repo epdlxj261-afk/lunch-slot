@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { getRandomRecommendation } from '../api.js'
-import { CATEGORIES, PRICE_RANGES, VISIT_STATUSES, labelOf } from '../constants.js'
+import { getRandomRecommendation, recordVisit } from '../api.js'
+import {
+  CATEGORIES,
+  PRICE_RANGES,
+  RATINGS,
+  VISIT_STATUSES,
+  labelOf,
+  localToday,
+  visitSummary,
+} from '../constants.js'
 
 const EMPTY_CONDITIONS = { category: '', priceRange: '', visitStatus: '' }
 
@@ -20,12 +28,18 @@ function wait(ms) {
 }
 
 // 추천 조건을 고르고 서버에서 무작위로 고른 식당 1곳을 슬롯머신 회전 후 보여 준다.
-function Recommendation() {
+// "여기로 결정"으로 방문을 기록하면 onVisited를 불러 목록을 갱신한다.
+function Recommendation({ onVisited }) {
   const [conditions, setConditions] = useState(EMPTY_CONDITIONS)
   const [result, setResult] = useState(null)
   const [message, setMessage] = useState('')
   const [spinning, setSpinning] = useState(false)
   const [reelIndex, setReelIndex] = useState(0)
+  // 결정할 때 함께 저장할 평점. 빈 값이면 기존 평점을 유지한다.
+  const [visitRating, setVisitRating] = useState('')
+  const [deciding, setDeciding] = useState(false)
+  const [decisionMessage, setDecisionMessage] = useState('')
+  const [decisionError, setDecisionError] = useState('')
   // 상태 반영 전에 들어온 연속 클릭도 막기 위해 ref로 회전 여부를 바로 기록한다.
   const spinningRef = useRef(false)
   const intervalRef = useRef(null)
@@ -41,6 +55,9 @@ function Recommendation() {
     spinningRef.current = true
     setSpinning(true)
     setMessage('')
+    setVisitRating('')
+    setDecisionMessage('')
+    setDecisionError('')
     intervalRef.current = setInterval(
       () => setReelIndex((index) => (index + 1) % REEL_SYMBOLS.length),
       SPIN_INTERVAL_MS,
@@ -63,6 +80,27 @@ function Recommendation() {
     }
     spinningRef.current = false
     setSpinning(false)
+  }
+
+  async function handleDecide() {
+    if (!result || deciding) return
+    setDeciding(true)
+    setDecisionError('')
+    try {
+      const updated = await recordVisit(result.id, {
+        visitedOn: localToday(),
+        rating: visitRating === '' ? null : Number(visitRating),
+      })
+      setResult(updated)
+      setVisitRating('')
+      setDecisionMessage(`방문을 기록했습니다. (${updated.visitCount}회째)`)
+      onVisited()
+    } catch (err) {
+      setDecisionMessage('')
+      setDecisionError(err.message)
+    } finally {
+      setDeciding(false)
+    }
   }
 
   const hasOutcome = result !== null || message !== ''
@@ -89,7 +127,12 @@ function Recommendation() {
           </div>
         ))}
       </fieldset>
-      <button type="button" className="primary" onClick={handleSpin} disabled={spinning}>
+      <button
+        type="button"
+        className="primary"
+        onClick={handleSpin}
+        disabled={spinning || deciding}
+      >
         {spinning ? '돌리는 중...' : hasOutcome ? '다시 뽑기' : '추천받기'}
       </button>
 
@@ -113,7 +156,39 @@ function Recommendation() {
                 <span>{labelOf(VISIT_STATUSES, result.visitStatus)}</span>
                 <span>{result.rating === null ? '평점 없음' : `평점 ${result.rating}점`}</span>
               </div>
+              {visitSummary(result) && (
+                <p className="item-location">{visitSummary(result)}</p>
+              )}
               {result.location && <p className="item-location">위치: {result.location}</p>}
+              <div className="decide-row">
+                <label htmlFor="visit-rating">평점</label>
+                <select
+                  id="visit-rating"
+                  value={visitRating}
+                  onChange={(event) => setVisitRating(event.target.value)}
+                  disabled={deciding}
+                >
+                  <option value="">선택 안 함(기존 유지)</option>
+                  {RATINGS.map((rating) => (
+                    <option key={rating} value={rating}>
+                      {rating}점
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={handleDecide} disabled={deciding}>
+                  {deciding ? '기록 중...' : '여기로 결정'}
+                </button>
+              </div>
+              {decisionMessage && (
+                <p className="decide-message" role="status">
+                  {decisionMessage}
+                </p>
+              )}
+              {decisionError && (
+                <p className="error" role="alert">
+                  {decisionError}
+                </p>
+              )}
             </div>
           )}
         </>

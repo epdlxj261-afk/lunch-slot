@@ -1,5 +1,6 @@
 import random
 from contextlib import contextmanager
+from datetime import date
 
 from backend.database import get_connection
 from backend.schemas import Category, PriceRange, Restaurant, RestaurantCreate, VisitStatus
@@ -131,6 +132,22 @@ def update_restaurant(restaurant_id: int, changes: dict) -> Restaurant | None:
                 [changes[column] for column in columns] + [restaurant_id],
             )
         # 값이 그대로면 UPDATE의 영향 행 수가 0일 수 있으므로 존재 여부는 다시 조회해 판단한다.
+        return _fetch_one(cur, restaurant_id)
+
+
+def record_visit(restaurant_id: int, visited_on: date, rating: int | None) -> Restaurant | None:
+    """방문 상태를 VISITED로, 방문 횟수를 1 증가, 마지막 방문일을 visited_on으로 바꾼다.
+
+    rating이 None이면 기존 평점을 유지한다. 없는 id면 None.
+    """
+    with _cursor() as cur:
+        cur.execute(
+            "UPDATE restaurants SET visit_status = %s, visit_count = visit_count + 1, "
+            "last_visited_at = %s, rating = COALESCE(%s, rating) WHERE id = %s",
+            (VisitStatus.VISITED.value, visited_on, rating, restaurant_id),
+        )
+        if cur.rowcount == 0:
+            return None
         return _fetch_one(cur, restaurant_id)
 
 

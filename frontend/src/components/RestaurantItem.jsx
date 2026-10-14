@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CATEGORIES, PRICE_RANGES, VISIT_STATUSES, labelOf } from '../constants.js'
+import { CATEGORIES, PRICE_RANGES, VISIT_STATUSES, labelOf, visitSummary } from '../constants.js'
 
 // 목록의 식당 한 곳. 수정·삭제는 모두 restaurant.id 기준으로 상위에 요청한다.
 // 수정할 수 있는 항목은 이름·위치·메모뿐이다.
@@ -116,6 +116,7 @@ function RestaurantItem({ restaurant, onUpdate, onDelete }) {
         <span>{labelOf(PRICE_RANGES, restaurant.priceRange)}</span>
         <span>{labelOf(VISIT_STATUSES, restaurant.visitStatus)}</span>
         <span>{restaurant.rating === null ? '평점 없음' : `평점 ${restaurant.rating}점`}</span>
+        {visitSummary(restaurant) && <span>{visitSummary(restaurant)}</span>}
       </div>
       {restaurant.location && <p className="item-location">위치: {restaurant.location}</p>}
       {restaurant.memo && <p className="item-memo">{restaurant.memo}</p>}

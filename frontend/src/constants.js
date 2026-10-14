@@ -44,6 +44,20 @@ export function isValidRating(rating) {
   return rating === null || (Number.isInteger(rating) && rating >= 1 && rating <= 5)
 }
 
+// 브라우저 로컬 달력 기준 오늘 날짜(YYYY-MM-DD). toISOString은 UTC라 날짜가 어긋날 수 있어 쓰지 않는다.
+export function localToday() {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+// 방문 기록 요약. 방문한 적이 없으면 null.
+export function visitSummary(restaurant) {
+  if (!restaurant.visitCount) return null
+  return `방문 ${restaurant.visitCount}회 · 마지막 ${restaurant.lastVisitedAt}`
+}
+
 // 글자 수는 이모지 등도 1자로 세도록 코드 포인트 기준으로 센다.
 export function textLength(text) {
   return Array.from(text).length

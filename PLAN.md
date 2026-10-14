@@ -59,8 +59,9 @@ lunch-slot/
 - [x] T13: 슬롯머신 애니메이션(약 1.5초)과 다시 뽑기. 결과는 서버 응답으로 고정. (F10)
   확인: 회전 후 결과 표시. 회전 중 연속 클릭해도 요청 1회.
   결과(2026-10-14): 변경 파일: frontend/src/components/Recommendation.jsx, App.css, PLAN.md. 회전 시작과 함께 요청 1회, 응답과 1.5초가 모두 지나야 결과 표시(회전 그림은 장식), 회전 중 버튼·조건 잠금과 ref로 연속 클릭 차단, 결과 후 "다시 뽑기", 동작 줄이기 설정 시 애니메이션 끔. 실행: npm run lint(경고 없음)·npm run build 통과. 사용자가 화면에서 회전 후 결과, 다시 뽑기, 연속 클릭 시 회전 1회, 후보 0곳 안내를 확인. API 접근 로그 기준 확인 기간의 추천 요청은 10건(일식 7, 중식 2, 카페 1)으로 연타가 요청으로 이어지지 않았음과 일치하나, 단계별 클릭 수를 따로 세지 않아 연타 단계만의 요청 수는 분리 확인하지 못함. 남은 오류 없음.
-- [ ] T14: POST /api/restaurants/{id}/visits(body: visited_on, 선택 rating)와 "여기로 결정" 버튼·평점 선택. 날짜는 브라우저 로컬 날짜. (F11)
+- [x] T14: POST /api/restaurants/{id}/visits(body: visited_on, 선택 rating)와 "여기로 결정" 버튼·평점 선택. 날짜는 브라우저 로컬 날짜. (F11)
   확인: 결정 시 가봤음·방문 1회·오늘 날짜 표시. 다시 결정하면 2회. 평점 4 선택 시 4로 저장, 평점 미선택 시 기존 평점 유지, rating=6은 422. API 재시작 후 유지.
+  결과(2026-10-14): 변경 파일: backend/schemas.py(VisitCreate), repository.py(record_visit: UPDATE 1회, rating은 COALESCE로 미지정 시 유지), main.py, frontend/src/api.js, constants.js(localToday·visitSummary), components/Recommendation.jsx·RestaurantItem.jsx, App.jsx, App.css, PLAN.md. 처음 visited_on을 strict date로 두었더니 FastAPI가 본문을 Python 값으로 검증해 정상 문자열도 422가 됨 → YYYY-MM-DD 문자열 사전 검사 후 일반 변환으로 수정. 실행: 시험용 식당(평점 2)에 curl로 1회차 VISITED·1회·2026-10-14·평점 2 유지, 2회차 2회, rating 4 → 4, rating null → 4 유지, rating 6·"4", 2026/10/14·2026-13-01·2026-02-30·숫자·시각 포함·누락·추가 필드 422, 없는 id 404 확인 후 시험용 식당 삭제. npm run lint(경고 없음)·npm run build 통과. 사용자가 화면에서 결정 시 가봤음·방문 1회·오늘 날짜, 재결정 2회, 평점 4 저장·미선택 시 유지를 확인. API 중지·재시작 전후 목록(방문 기록 포함 7건) 동일. 남은 오류 없음.
 - [ ] T15: 최근 N일 방문 제외 옵션(exclude_days 1~30, 기본 3). (F12)
   확인: last_visited_at을 SQL로 오늘/3일 전/4일 전으로 바꾼 뒤 N=3이면 오늘·3일 전 식당은 안 나오고 4일 전 식당은 나올 수 있음. exclude_days=0, 31은 422.
 - [ ] T16: 입력 안전성·접속 정보 점검. dangerouslySetInnerHTML 사용 금지.
