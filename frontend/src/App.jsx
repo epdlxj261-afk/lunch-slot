@@ -1,140 +1,140 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createRestaurant, deleteRestaurant, listRestaurants, updateRestaurant } from './api.js'
 import { EMPTY_FILTERS } from './constants.js'
-import { loadRestaurants, saveRestaurants } from './storage.js'
 import { validateEditable } from './validation.js'
 import RegisterForm from './components/RegisterForm.jsx'
 import FilterBar from './components/FilterBar.jsx'
 import RestaurantItem from './components/RestaurantItem.jsx'
 import './App.css'
 
-// 검색어와 필터를 모두 만족하는(AND) 식당만 남긴다. 빈 값은 조건에서 뺀다.
-function filterRestaurants(restaurants, filters) {
-  const q = filters.q.trim().toLowerCase()
-  return restaurants.filter(
-    (restaurant) =>
-      (q === '' || restaurant.name.toLowerCase().includes(q)) &&
-      (filters.category === '' || restaurant.category === filters.category) &&
-      (filters.priceRange === '' || restaurant.priceRange === filters.priceRange) &&
-      (filters.visitStatus === '' || restaurant.visitStatus === filters.visitStatus),
+function hasActiveFilters(filters) {
+  return (
+    filters.q.trim() !== '' ||
+    filters.category !== '' ||
+    filters.priceRange !== '' ||
+    filters.visitStatus !== ''
   )
 }
 
+function trimEditable(values) {
+  return {
+    name: values.name.trim(),
+    location: values.location.trim(),
+    memo: values.memo.trim(),
+  }
+}
+
 function App() {
-  const [initial] = useState(loadRestaurants)
-  const [restaurants, setRestaurants] = useState(initial.restaurants)
-  // 저장값이 손상되면 true. 초기화 전까지 등록·저장을 막는다.
-  const [storageBroken, setStorageBroken] = useState(!initial.ok)
+  const [restaurants, setRestaurants] = useState([])
   const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [loading, setLoading] = useState(true)
+  // 목록을 불러오지 못했을 때의 안내(예: 서버에 연결할 수 없습니다)
+  const [loadError, setLoadError] = useState('')
   const [error, setError] = useState('')
+  // 값을 바꾸면 현재 필터로 목록을 다시 불러온다(등록·수정·삭제 후, 다시 시도).
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    // 필터를 빠르게 바꿀 때 늦게 도착한 이전 응답이 화면을 덮지 않도록 마지막 요청만 반영한다.
+    let ignore = false
+    listRestaurants(filters)
+      .then((items) => {
+        if (ignore) return
+        setRestaurants(items)
+        setLoadError('')
+      })
+      .catch((err) => {
+        if (!ignore) setLoadError(err.message)
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [filters, reloadKey])
+
+  function reload() {
+    setReloadKey((key) => key + 1)
+  }
 
   // 실패하면 오류 메시지, 성공하면 null을 돌려준다.
-  function handleRegister(values) {
-    if (storageBroken) return '저장된 데이터를 읽을 수 없어 등록할 수 없습니다.'
-    const editable = {
-      name: values.name.trim(),
-      location: values.location.trim(),
-      memo: values.memo.trim(),
-    }
+  async function handleRegister(values) {
+    const editable = trimEditable(values)
     const message = validateEditable(editable)
     if (message) return message
-    const restaurant = {
-      id: crypto.randomUUID(),
-      ...editable,
-      category: values.category,
-      priceRange: values.priceRange,
-      visitStatus: values.visitStatus,
-      rating: values.rating,
-      createdAt: new Date().toISOString(),
+    try {
+      await createRestaurant({ ...values, ...editable })
+    } catch (err) {
+      return err.message
     }
-    // 최신 등록순으로 보이도록 앞에 추가한다.
-    const next = [restaurant, ...restaurants]
-    if (!saveRestaurants(next)) return '저장하지 못했습니다. 다시 시도하세요.'
-    setRestaurants(next)
+    reload()
     return null
   }
 
   // id가 같은 식당의 이름·위치·메모만 바꾼다. 실패하면 오류 메시지, 성공하면 null을 돌려준다.
-  function handleUpdate(id, values) {
-    if (storageBroken) return '저장된 데이터를 읽을 수 없어 수정할 수 없습니다.'
-    const editable = {
-      name: values.name.trim(),
-      location: values.location.trim(),
-      memo: values.memo.trim(),
-    }
+  async function handleUpdate(id, values) {
+    const editable = trimEditable(values)
     const message = validateEditable(editable)
     if (message) return message
-    const next = restaurants.map((restaurant) =>
-      restaurant.id === id ? { ...restaurant, ...editable } : restaurant,
-    )
-    if (!saveRestaurants(next)) return '저장하지 못했습니다. 다시 시도하세요.'
-    setRestaurants(next)
+    try {
+      await updateRestaurant(id, editable)
+    } catch (err) {
+      return err.message
+    }
+    reload()
     return null
   }
 
   // 확인을 받은 뒤 id가 같은 식당만 삭제한다. 취소하면 아무것도 바꾸지 않는다.
-  function handleDelete(id) {
-    if (storageBroken) return
+  async function handleDelete(id) {
     const target = restaurants.find((restaurant) => restaurant.id === id)
     if (!target) return
     if (!window.confirm(`"${target.name}"을(를) 삭제할까요?`)) return
-    const next = restaurants.filter((restaurant) => restaurant.id !== id)
-    if (!saveRestaurants(next)) {
-      setError('삭제하지 못했습니다. 다시 시도하세요.')
-      return
+    try {
+      await deleteRestaurant(id)
+      setError('')
+    } catch (err) {
+      setError(err.message)
     }
-    setRestaurants(next)
-    setError('')
+    reload()
   }
 
-  function handleReset() {
-    if (!window.confirm('저장된 데이터를 모두 지우고 빈 목록으로 초기화할까요?')) return
-    if (!saveRestaurants([])) {
-      setError('초기화하지 못했습니다. 다시 시도하세요.')
-      return
-    }
-    setRestaurants([])
-    setStorageBroken(false)
-    setError('')
-  }
-
-  const visibleRestaurants = filterRestaurants(restaurants, filters)
+  const filtered = hasActiveFilters(filters)
 
   return (
     <main className="app">
       <h1>오늘 뭐 먹지?</h1>
 
-      {storageBroken && (
-        <div className="storage-error" role="alert">
-          <p>저장된 데이터를 읽을 수 없습니다</p>
-          <button type="button" onClick={handleReset}>
-            초기화
-          </button>
-        </div>
-      )}
-
-      <RegisterForm disabled={storageBroken} onRegister={handleRegister} />
+      <RegisterForm onRegister={handleRegister} />
 
       <section>
-        <h2>
-          식당 목록 ({visibleRestaurants.length}/{restaurants.length})
-        </h2>
+        <h2>식당 목록 ({restaurants.length})</h2>
         <FilterBar filters={filters} onChange={setFilters} />
         {error && (
           <p className="error" role="alert">
             {error}
           </p>
         )}
-        {restaurants.length === 0 ? (
-          <p className="empty">등록된 식당이 없습니다.</p>
-        ) : visibleRestaurants.length === 0 ? (
-          <p className="empty">검색 조건에 맞는 식당이 없습니다.</p>
+        {loadError ? (
+          <div className="load-error" role="alert">
+            <p>{loadError}</p>
+            <button type="button" onClick={reload}>
+              다시 시도
+            </button>
+          </div>
+        ) : loading ? (
+          <p className="empty">불러오는 중...</p>
+        ) : restaurants.length === 0 ? (
+          <p className="empty">
+            {filtered ? '검색 조건에 맞는 식당이 없습니다.' : '등록된 식당이 없습니다.'}
+          </p>
         ) : (
           <ul className="restaurant-list">
-            {visibleRestaurants.map((restaurant) => (
+            {restaurants.map((restaurant) => (
               <RestaurantItem
                 key={restaurant.id}
                 restaurant={restaurant}
-                disabled={storageBroken}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
               />

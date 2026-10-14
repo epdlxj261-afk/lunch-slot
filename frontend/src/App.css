@@ -86,7 +86,7 @@ textarea:disabled {
   color: #c62828;
 }
 
-.storage-error {
+.load-error {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -98,7 +98,7 @@ textarea:disabled {
   color: #c62828;
 }
 
-.storage-error p {
+.load-error p {
   margin: 0;
 }
 

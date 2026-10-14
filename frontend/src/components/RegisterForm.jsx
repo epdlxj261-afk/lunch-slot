@@ -19,22 +19,26 @@ const EMPTY_FORM = {
   rating: '',
 }
 
-// 식당 등록 폼. onRegister는 실패하면 오류 메시지, 성공하면 null을 돌려준다.
-function RegisterForm({ disabled, onRegister }) {
+// 식당 등록 폼. onRegister는 실패하면 오류 메시지, 성공하면 null을 돌려준다(Promise).
+function RegisterForm({ onRegister }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [error, setError] = useState('')
+  // 요청 중에는 폼을 잠가 중복 등록을 막는다.
+  const [submitting, setSubmitting] = useState(false)
 
   function setField(field) {
     return (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }))
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
-    if (disabled) return
-    const message = onRegister({
+    if (submitting) return
+    setSubmitting(true)
+    const message = await onRegister({
       ...form,
       rating: form.rating === '' ? null : Number(form.rating),
     })
+    setSubmitting(false)
     if (message) {
       setError(message)
       return
@@ -45,7 +49,7 @@ function RegisterForm({ disabled, onRegister }) {
 
   return (
     <form className="register-form" onSubmit={handleSubmit}>
-      <fieldset disabled={disabled}>
+      <fieldset disabled={submitting}>
         <legend>식당 등록</legend>
 
         <div className="field">
@@ -120,7 +124,7 @@ function RegisterForm({ disabled, onRegister }) {
         </div>
 
         <button type="submit" className="primary">
-          등록
+          {submitting ? '등록 중...' : '등록'}
         </button>
         {error && (
           <p className="error" role="alert">

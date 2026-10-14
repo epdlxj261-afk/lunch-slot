@@ -1,0 +1,120 @@
+// 백엔드 API(/api) 호출. 서버 필드(snake_case)와 화면 필드(camelCase)는 여기서만 변환한다.
+
+const BASE_URL = '/api'
+
+export const CONNECTION_ERROR_MESSAGE = '서버에 연결할 수 없습니다'
+
+const FIELD_LABELS = {
+  name: '식당 이름',
+  category: '카테고리',
+  price_range: '가격대',
+  location: '위치',
+  memo: '메모',
+  visit_status: '방문 상태',
+  rating: '평점',
+}
+
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message)
+    this.status = status
+  }
+}
+
+// 422 응답의 첫 번째 오류에서 필드 이름을 찾아 한국어 안내로 바꾼다.
+function validationMessage(detail) {
+  const field = Array.isArray(detail) ? detail[0]?.loc?.at(-1) : undefined
+  const label = FIELD_LABELS[field]
+  return label ? `${label} 값이 올바르지 않습니다.` : '입력값이 올바르지 않습니다.'
+}
+
+async function request(path, options = {}) {
+  let response
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: options.body ? { 'Content-Type': 'application/json' } : undefined,
+    })
+  } catch {
+    throw new ApiError(CONNECTION_ERROR_MESSAGE, 0)
+  }
+
+  if (response.status === 204) return null
+
+  let body = null
+  try {
+    body = await response.json()
+  } catch {
+    body = null
+  }
+
+  if (response.ok) return body
+  // 개발 서버 프록시는 API가 꺼져 있으면 본문 없는 500을 돌려준다.
+  if ([502, 503, 504].includes(response.status) || (response.status === 500 && body === null)) {
+    throw new ApiError(CONNECTION_ERROR_MESSAGE, response.status)
+  }
+  if (response.status === 422) {
+    throw new ApiError(validationMessage(body?.detail), 422)
+  }
+  if (typeof body?.detail === 'string') {
+    throw new ApiError(body.detail, response.status)
+  }
+  throw new ApiError('서버 오류가 발생했습니다. 다시 시도하세요.', response.status)
+}
+
+function fromServer(item) {
+  return {
+    id: item.id,
+    name: item.name,
+    category: item.category,
+    priceRange: item.price_range,
+    location: item.location,
+    memo: item.memo,
+    visitStatus: item.visit_status,
+    rating: item.rating,
+    visitCount: item.visit_count,
+    lastVisitedAt: item.last_visited_at,
+    createdAt: item.created_at,
+  }
+}
+
+// filters의 빈 값은 "전체"이므로 쿼리에서 뺀다.
+export async function listRestaurants(filters) {
+  const params = new URLSearchParams()
+  if (filters.q.trim()) params.set('q', filters.q.trim())
+  if (filters.category) params.set('category', filters.category)
+  if (filters.priceRange) params.set('price_range', filters.priceRange)
+  if (filters.visitStatus) params.set('visit_status', filters.visitStatus)
+  const query = params.toString()
+  const items = await request(`/restaurants${query ? `?${query}` : ''}`)
+  return items.map(fromServer)
+}
+
+export async function createRestaurant(values) {
+  const item = await request('/restaurants', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: values.name,
+      category: values.category,
+      price_range: values.priceRange,
+      location: values.location,
+      memo: values.memo,
+      visit_status: values.visitStatus,
+      rating: values.rating,
+    }),
+  })
+  return fromServer(item)
+}
+
+// 이름·위치·메모만 보낸다.
+export async function updateRestaurant(id, { name, location, memo }) {
+  const item = await request(`/restaurants/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name, location, memo }),
+  })
+  return fromServer(item)
+}
+
+export async function deleteRestaurant(id) {
+  await request(`/restaurants/${id}`, { method: 'DELETE' })
+}

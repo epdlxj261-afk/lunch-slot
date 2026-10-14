@@ -39,8 +39,9 @@ lunch-slot/
 - [x] T07: PATCH(name, location, memo만 허용)·DELETE와 검색·필터(q, category, price_range, visit_status) 구현.
   확인: 미전달 필드 유지, PATCH에 category 전달 시 422, 없는 ID 404, 삭제 204. 필터 결과가 AND 조건과 일치.
   결과(2026-10-14): 변경 파일: backend/schemas.py(RestaurantUpdate), repository.py, main.py, PLAN.md. 실행: 8001 서버(--reload)에 curl로 확인. PATCH: memo만 보내면 나머지 유지·공백 제거, 같은 이름 "국밥" 두 곳 중 id=1만 수정, {} → 200 변경 없음, category·rating·visit_count 전달 422, 공백 이름·name=null·위치 101자 422, 없는 id 404, id=abc 422. DELETE: 204, 같은 id 재삭제·없는 id 404. 필터: q(공백 제거·대소문자 무시 "pASTA"→Pasta), category, category+price_range, q+category+price_range+visit_status 모두 AND로 일치, 결과 없음 → [], category=PIZZA·visit_status=DONE 422. 참고: curl에 한글을 인코딩 없이 넣으면 잘못된 요청이 되므로 URL 인코딩해서 확인. 남은 오류 없음.
-- [ ] T08: 프런트엔드 저장 처리를 API 호출로 교체. vite.config.js에 /api → 8001 프록시. storage.js 삭제.
+- [x] T08: 프런트엔드 저장 처리를 API 호출로 교체. vite.config.js에 /api → 8001 프록시. storage.js 삭제.
   확인: 화면과 curl 목록이 같음. API 중지 시 "서버에 연결할 수 없습니다" 표시. API 재시작 시 데이터가 사라지면 정상.
+  결과(2026-10-14): 변경 파일: frontend/src/api.js(신규), vite.config.js, src/App.jsx, components/RegisterForm.jsx·RestaurantItem.jsx, App.css, src/storage.js 삭제, PLAN.md. 서버 필드(snake_case)↔화면 필드(camelCase) 변환은 api.js에서만 수행, 검색·필터는 서버 쿼리 사용, 요청 중 버튼 잠금. 실행: npm run lint(경고 없음)·npm run build 통과. curl로 5173 프록시 목록 = 8001 직접 목록, API 중지 시 프록시가 본문 없는 502 반환, 재시작 후 목록 [] 확인. 가짜 fetch로 api.js의 필드 변환·쿼리, 연결 실패·502·본문 없는 500 → "서버에 연결할 수 없습니다", 404·422 한국어 안내 확인. 사용자가 브라우저에서 화면·curl 목록 일치, API 중지 시 안내 표시, 재시작 후 데이터 초기화를 확인. 남은 오류 없음.
 ## 4장: DB
 - [ ] T09: backend/.env(DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)와 .env.example(가짜 값) 준비. .gitignore에 .env 추가. db/create_db.sh가 .env를 읽어 MariaDB 전용 사용자·DB(lunch_slot) 생성. 비밀번호는 .env에만 둔다.
   확인: git status에 .env가 보이지 않음. grep -rn "DB_PASSWORD=" --exclude=.env . 결과에 .env.example의 가짜 값만 나옴. mariadb -u lunch_app -p lunch_slot -e "SELECT 1" 성공.
