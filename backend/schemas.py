@@ -46,6 +46,20 @@ class RestaurantCreate(BaseModel):
     rating: Rating | None = None
 
 
+class RestaurantUpdate(BaseModel):
+    """이름·위치·메모만 부분 수정한다. 다른 필드를 보내면 422.
+
+    기본값 None은 "보내지 않음"을 뜻하며 검증하지 않는다. null을 직접 보내면
+    문자열이 아니므로 422가 된다. 실제 변경 값은 model_dump(exclude_unset=True)로 꺼낸다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: Name = None
+    location: Location = None
+    memo: Memo = None
+
+
 class Restaurant(BaseModel):
     id: int
     name: str

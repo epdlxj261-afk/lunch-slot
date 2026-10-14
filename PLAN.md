@@ -36,8 +36,9 @@ lunch-slot/
 - [x] T06: 메모리 기반 /api/restaurants GET과 POST. 서버에서도 이름·필드 검증.
   확인: /docs에서 등록 후 조회. 빈 이름, category=PIZZA, rating=6은 422.
   결과(2026-10-14): 변경 파일: backend/schemas.py·repository.py(신규), backend/main.py, PLAN.md. 이름·위치·메모는 공백 제거 후 길이 검사, 정의되지 않은 필드 거절, rating은 strict 정수 1~5. 실행: .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 --reload. curl로 "  국밥  " → 201·"국밥"·기본값, 전체 항목 201, 50/100/500자 경계 201, 빈 이름·공백 이름·51자·이름 누락·name=123·PIZZA·CHEAP·DONE·rating 6/0/"3"/2.5·위치 101자·메모 501자·visit_count 전달 모두 422, GET 최신 등록순 확인. 사용자가 /docs에서 등록·조회와 빈 이름·PIZZA·rating=6의 422를 확인. 남은 오류 없음.
-- [ ] T07: PATCH(name, location, memo만 허용)·DELETE와 검색·필터(q, category, price_range, visit_status) 구현.
+- [x] T07: PATCH(name, location, memo만 허용)·DELETE와 검색·필터(q, category, price_range, visit_status) 구현.
   확인: 미전달 필드 유지, PATCH에 category 전달 시 422, 없는 ID 404, 삭제 204. 필터 결과가 AND 조건과 일치.
+  결과(2026-10-14): 변경 파일: backend/schemas.py(RestaurantUpdate), repository.py, main.py, PLAN.md. 실행: 8001 서버(--reload)에 curl로 확인. PATCH: memo만 보내면 나머지 유지·공백 제거, 같은 이름 "국밥" 두 곳 중 id=1만 수정, {} → 200 변경 없음, category·rating·visit_count 전달 422, 공백 이름·name=null·위치 101자 422, 없는 id 404, id=abc 422. DELETE: 204, 같은 id 재삭제·없는 id 404. 필터: q(공백 제거·대소문자 무시 "pASTA"→Pasta), category, category+price_range, q+category+price_range+visit_status 모두 AND로 일치, 결과 없음 → [], category=PIZZA·visit_status=DONE 422. 참고: curl에 한글을 인코딩 없이 넣으면 잘못된 요청이 되므로 URL 인코딩해서 확인. 남은 오류 없음.
 - [ ] T08: 프런트엔드 저장 처리를 API 호출로 교체. vite.config.js에 /api → 8001 프록시. storage.js 삭제.
   확인: 화면과 curl 목록이 같음. API 중지 시 "서버에 연결할 수 없습니다" 표시. API 재시작 시 데이터가 사라지면 정상.
 ## 4장: DB
