@@ -71,8 +71,9 @@ lunch-slot/
 ## 6장: 서버 분리
 - [x] T17: DB 서버 구성 후 App 서버에서 SELECT 1 확인. (한 대에서는 DB_HOST만 설정값으로 분리)
   결과(2026-10-14): 별도 서버 접속 정보가 없어 사용자 결정으로 서버 한 대(이 머신)에서 진행. 변경 파일: .env.example(서버 분리 시 DB_HOST·계정 설정 주석), PLAN.md. backend 코드에 DB 주소·포트·이름 고정값 없음(grep), 접속값은 .env 또는 환경변수에서만 읽음. 실행: backend.database.get_connection으로 SELECT 1 → 성공(lunch_app@localhost, lunch_slot). DB_HOST만 환경변수로 바꿔 실행 시 localhost 성공, 127.0.0.2·db.invalid는 접속 실패로 DB_HOST 값대로 대상이 바뀜을 확인. API GET /api/restaurants 200. 실제 DB 서버 분리(bind-address·App 서버 IP 계정)는 서버 준비 후 진행 필요. 남은 오류 없음.
-- [ ] T18: App 서버 코드·가상환경·환경변수·systemd 구성. --reload 없이 실행.
+- [x] T18: App 서버 코드·가상환경·환경변수·systemd 구성. --reload 없이 실행.
   확인: App에서 /api/health 응답.
+  결과(2026-10-14): 서버 한 대(T17 결정)에서 진행. 변경 파일: deploy/systemd/lunch-slot-api.service, deploy/setup_app_server.sh(신규), PLAN.md. 코드·가상환경은 /opt/lunch-slot(root 소유), 서비스는 전용 사용자 lunchslot, 접속 정보는 /opt/lunch-slot/.env(root:lunchslot 640, 기존 파일은 덮어쓰지 않음), API_HOST=127.0.0.1·API_PORT=8001 설정값, ProtectSystem=strict·ProtectHome·NoNewPrivileges. 같은 서버의 task-flow-api(8000)와 이름·포트 겹치지 않음. 실행: 개발 서버(8001) 중지 후 사용자가 sudo bash deploy/setup_app_server.sh 실행. 확인: lunch-slot-api active·enabled, NRestarts=0, 프로세스 사용자 lunchslot·명령에 --reload 없음, curl localhost:8001/api/health → 200 {"status":"ok"}, 목록 7건(API 직접·5173 프록시 동일), /opt 배포 코드·서비스 파일이 저장소와 동일, /opt/lunch-slot/.env는 일반 사용자가 읽을 수 없음. 백엔드 변경 시 설치 스크립트 재실행 필요. 남은 오류 없음.
 - [ ] T19: Web 서버 Nginx와 정적 파일(frontend/dist)·/api 프록시 구성. deploy/nginx/lunch-slot.conf 작성.
   확인: Web 주소로 등록·추천, DB 저장, App 재시작 후 유지.
 - [ ] T20: PRD 완료 기준 전체 점검.
