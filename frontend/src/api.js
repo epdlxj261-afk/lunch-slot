@@ -90,6 +90,18 @@ export async function listRestaurants(filters) {
   return items.map(fromServer)
 }
 
+// 조건(카테고리·가격대·방문 상태)에 맞는 식당 1곳을 서버가 무작위로 고른다.
+// 후보가 없으면 서버의 404 안내("조건에 맞는 식당이 없습니다")가 ApiError로 전달된다.
+export async function getRandomRecommendation(conditions) {
+  const params = new URLSearchParams()
+  if (conditions.category) params.set('category', conditions.category)
+  if (conditions.priceRange) params.set('price_range', conditions.priceRange)
+  if (conditions.visitStatus) params.set('visit_status', conditions.visitStatus)
+  const query = params.toString()
+  const item = await request(`/recommendations/random${query ? `?${query}` : ''}`)
+  return fromServer(item)
+}
+
 export async function createRestaurant(values) {
   const item = await request('/restaurants', {
     method: 'POST',

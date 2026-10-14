@@ -164,3 +164,40 @@ textarea:disabled {
   flex-direction: column;
   gap: 8px;
 }
+
+.recommendation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 12px 14px 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.recommendation h2 {
+  margin: 0;
+}
+
+.recommendation .primary {
+  align-self: flex-start;
+  padding: 8px 20px;
+}
+
+.recommend-message {
+  margin: 0;
+  color: #777;
+}
+
+.recommend-result {
+  padding: 12px;
+  border-radius: 6px;
+  background: #fff8e1;
+  overflow-wrap: anywhere;
+}
+
+.recommend-name {
+  margin: 0;
+  font-size: 1.4em;
+  font-weight: 700;
+}

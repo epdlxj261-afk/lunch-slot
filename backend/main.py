@@ -11,6 +11,7 @@ from backend.schemas import (
 )
 
 NOT_FOUND = "식당을 찾을 수 없습니다"
+NO_CANDIDATE = "조건에 맞는 식당이 없습니다"
 
 app = FastAPI(title="오늘 뭐 먹지? API")
 
@@ -41,6 +42,18 @@ def update_restaurant(restaurant_id: int, data: RestaurantUpdate):
     restaurant = repository.update_restaurant(restaurant_id, data.model_dump(exclude_unset=True))
     if restaurant is None:
         raise HTTPException(status_code=404, detail=NOT_FOUND)
+    return restaurant
+
+
+@app.get("/api/recommendations/random", response_model=Restaurant)
+def random_recommendation(
+    category: Category | None = None,
+    price_range: PriceRange | None = None,
+    visit_status: VisitStatus | None = None,
+):
+    restaurant = repository.random_restaurant(category, price_range, visit_status)
+    if restaurant is None:
+        raise HTTPException(status_code=404, detail=NO_CANDIDATE)
     return restaurant
 
 

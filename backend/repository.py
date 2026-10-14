@@ -1,3 +1,4 @@
+import random
 from contextlib import contextmanager
 
 from backend.database import get_connection
@@ -39,15 +40,15 @@ def _fetch_one(cur, restaurant_id: int) -> Restaurant | None:
     return Restaurant(**row) if row else None
 
 
-def list_restaurants(
-    q: str | None = None,
-    category: Category | None = None,
-    price_range: PriceRange | None = None,
-    visit_status: VisitStatus | None = None,
-) -> list[Restaurant]:
-    """조건을 모두 만족하는(AND) 식당을 최신 등록순(created_at 내림차순, 같으면 id 내림차순)으로 돌려준다.
+def _where(
+    q: str | None,
+    category: Category | None,
+    price_range: PriceRange | None,
+    visit_status: VisitStatus | None,
+) -> tuple[str, list]:
+    """조건을 AND로 묶은 WHERE 절과 파라미터를 만든다. 빈 값이나 None은 조건에서 뺀다.
 
-    q는 공백 제거 후 이름에 포함되는지 비교한다(테이블 정렬 규칙상 대소문자 구분 없음). 빈 값이나 None은 조건에서 뺀다.
+    q는 공백 제거 후 이름에 포함되는지 비교한다(테이블 정렬 규칙상 대소문자 구분 없음).
     """
     conditions = []
     params = []
@@ -64,8 +65,18 @@ def list_restaurants(
     if visit_status is not None:
         conditions.append("visit_status = %s")
         params.append(visit_status.value)
-
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    return where, params
+
+
+def list_restaurants(
+    q: str | None = None,
+    category: Category | None = None,
+    price_range: PriceRange | None = None,
+    visit_status: VisitStatus | None = None,
+) -> list[Restaurant]:
+    """조건을 모두 만족하는(AND) 식당을 최신 등록순(created_at 내림차순, 같으면 id 내림차순)으로 돌려준다."""
+    where, params = _where(q, category, price_range, visit_status)
     with _cursor() as cur:
         cur.execute(
             f"SELECT {COLUMNS} FROM restaurants {where} ORDER BY created_at DESC, id DESC",
@@ -73,6 +84,21 @@ def list_restaurants(
         )
         rows = cur.fetchall()
     return [Restaurant(**row) for row in rows]
+
+
+def random_restaurant(
+    category: Category | None = None,
+    price_range: PriceRange | None = None,
+    visit_status: VisitStatus | None = None,
+) -> Restaurant | None:
+    """조건에 맞는 후보 중 1곳을 균등 무작위로 고른다. 후보가 없으면 None."""
+    where, params = _where(None, category, price_range, visit_status)
+    with _cursor() as cur:
+        cur.execute(f"SELECT id FROM restaurants {where}", params)
+        candidate_ids = [row["id"] for row in cur.fetchall()]
+        if not candidate_ids:
+            return None
+        return _fetch_one(cur, random.choice(candidate_ids))
 
 
 def create_restaurant(data: RestaurantCreate) -> Restaurant:

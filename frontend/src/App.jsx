@@ -5,6 +5,7 @@ import { validateEditable } from './validation.js'
 import RegisterForm from './components/RegisterForm.jsx'
 import FilterBar from './components/FilterBar.jsx'
 import RestaurantItem from './components/RestaurantItem.jsx'
+import Recommendation from './components/Recommendation.jsx'
 import './App.css'
 
 function hasActiveFilters(filters) {
@@ -105,6 +106,8 @@ function App() {
   return (
     <main className="app">
       <h1>오늘 뭐 먹지?</h1>
+
+      <Recommendation />
 
       <RegisterForm onRegister={handleRegister} />
 
