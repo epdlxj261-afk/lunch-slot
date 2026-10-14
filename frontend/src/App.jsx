@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { loadRestaurants, saveRestaurants } from './storage.js'
 import './App.css'
 
 const NAME_MAX_LENGTH = 50
@@ -12,12 +13,16 @@ function validateName(name) {
 }
 
 function App() {
-  const [restaurants, setRestaurants] = useState([])
+  const [initial] = useState(loadRestaurants)
+  const [restaurants, setRestaurants] = useState(initial.restaurants)
+  // 저장값이 손상되면 true. 초기화 전까지 등록·저장을 막는다.
+  const [storageBroken, setStorageBroken] = useState(!initial.ok)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
 
   function handleSubmit(event) {
     event.preventDefault()
+    if (storageBroken) return
     const trimmed = name.trim()
     const message = validateName(trimmed)
     if (message) {
@@ -30,14 +35,39 @@ function App() {
       createdAt: new Date().toISOString(),
     }
     // 최신 등록순으로 보이도록 앞에 추가한다.
-    setRestaurants((prev) => [restaurant, ...prev])
+    const next = [restaurant, ...restaurants]
+    if (!saveRestaurants(next)) {
+      setError('저장하지 못했습니다. 다시 시도하세요.')
+      return
+    }
+    setRestaurants(next)
     setName('')
+    setError('')
+  }
+
+  function handleReset() {
+    if (!window.confirm('저장된 데이터를 모두 지우고 빈 목록으로 초기화할까요?')) return
+    if (!saveRestaurants([])) {
+      setError('초기화하지 못했습니다. 다시 시도하세요.')
+      return
+    }
+    setRestaurants([])
+    setStorageBroken(false)
     setError('')
   }
 
   return (
     <main className="app">
       <h1>오늘 뭐 먹지?</h1>
+
+      {storageBroken && (
+        <div className="storage-error" role="alert">
+          <p>저장된 데이터를 읽을 수 없습니다</p>
+          <button type="button" onClick={handleReset}>
+            초기화
+          </button>
+        </div>
+      )}
 
       <form className="register-form" onSubmit={handleSubmit}>
         <label htmlFor="restaurant-name">식당 이름</label>
@@ -48,8 +78,11 @@ function App() {
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="예: 국밥집"
+            disabled={storageBroken}
           />
-          <button type="submit">등록</button>
+          <button type="submit" disabled={storageBroken}>
+            등록
+          </button>
         </div>
         {error && (
           <p className="error" role="alert">
