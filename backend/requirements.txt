@@ -2,3 +2,7 @@
 fastapi==0.143.0
 # FastAPI 실행용 ASGI 서버
 uvicorn[standard]==0.54.0
+# MariaDB 접속 드라이버(순수 Python, %s 파라미터 바인딩)
+PyMySQL==1.2.3
+# 프로젝트 루트 .env의 DB 접속 정보를 환경변수로 읽기
+python-dotenv==1.2.4

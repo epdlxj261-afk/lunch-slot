@@ -46,8 +46,9 @@ lunch-slot/
 - [x] T09: 프로젝트 루트 .env(DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)와 .env.example(가짜 값) 준비. .gitignore에 .env 추가. db/create_db.sh가 .env를 읽어 MariaDB 전용 사용자·DB(lunch_slot) 생성. 비밀번호는 .env에만 둔다.
   확인: git status에 .env가 보이지 않음. grep -rn "DB_PASSWORD=" --exclude=.env . 결과에 .env.example의 가짜 값만 나옴. mariadb -u lunch_app -p lunch_slot -e "SELECT 1" 성공.
   결과(2026-10-14): 사용자 결정으로 .env 위치를 backend/.env → 프로젝트 루트 .env로 변경(디렉터리 구조·T09 문장 수정). 변경 파일: .env.example·db/create_db.sh(신규), .gitignore(.env 추가), PLAN.md. .env는 권한 600, 비밀번호는 사용자가 직접 입력. create_db.sh는 .env를 source하지 않고 읽으며, SQL을 표준 입력으로 전달하고 기존 DB·사용자를 지우지 않음. 실행: 복사본에 MARIADB_ADMIN=cat으로 시험(.env 없음·빈 비밀번호·잘못된 DB 이름 거절, 따옴표·역슬래시 이스케이프, CRLF 처리). 사용자가 bash db/create_db.sh 실행 후 mariadb -u lunch_app -p lunch_slot -e "SELECT 1" 성공 확인. 추가로 .env 값으로 127.0.0.1 TCP 접속 시 lunch_app@localhost·lunch_slot·utf8mb4, 권한은 lunch_slot.*만임을 확인. git status에 .env 없음. grep 결과는 .env.example의 가짜 값과 이 확인 문장(PLAN.md)뿐. 남은 오류 없음.
-- [ ] T10: backend/database.py, init_db.py 생성. restaurants 테이블에 PRD 데이터 항목 전체와 기본값 정의.
+- [x] T10: backend/database.py, init_db.py 생성. restaurants 테이블에 PRD 데이터 항목 전체와 기본값 정의.
   확인: python -m backend.init_db 실행 후 DESCRIBE restaurants로 컬럼·기본값 확인.
+  결과(2026-10-14): 변경 파일: backend/database.py·init_db.py(신규), backend/requirements.txt(PyMySQL 1.2.3: MariaDB 드라이버·파라미터 바인딩, python-dotenv 1.2.4: 루트 .env 읽기), PLAN.md. database.py는 루트 .env를 읽되 기존 환경변수 우선, 누락 시 변수 이름만 알림. init_db는 CREATE TABLE IF NOT EXISTS로 기존 테이블·데이터 유지. 실행: .venv/bin/python -m backend.init_db 1회차 "만들었습니다", 2회차 "이미 있습니다". DESCRIBE: id(PK, auto_increment), name varchar(50), category enum 기본 ETC, price_range enum 기본 MID, location varchar(100) 기본 '', memo varchar(500) 기본 '', visit_status enum 기본 WANT, rating tinyint NULL, visit_count 기본 0, last_visited_at date NULL, created_at 기본 current_timestamp(), utf8mb4_unicode_ci·InnoDB, CHECK(rating 1~5). 롤백 트랜잭션에서 이름만 INSERT 시 기본값 적용, rating=6·category=PIZZA 거절 확인(행 수 0 유지). 남은 오류 없음.
 - [ ] T11: API 메모리 저장을 DB로 교체. SQL은 파라미터 바인딩만 사용. 샘플 데이터는 다시 등록한다.
   확인: 등록한 행을 SQL로 조회. API 재시작 후 데이터 유지. 이름 `'); DROP TABLE restaurants;--`가 글자 그대로 저장됨.
 ## 5장: 추천
