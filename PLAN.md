@@ -49,8 +49,9 @@ lunch-slot/
 - [x] T10: backend/database.py, init_db.py 생성. restaurants 테이블에 PRD 데이터 항목 전체와 기본값 정의.
   확인: python -m backend.init_db 실행 후 DESCRIBE restaurants로 컬럼·기본값 확인.
   결과(2026-10-14): 변경 파일: backend/database.py·init_db.py(신규), backend/requirements.txt(PyMySQL 1.2.3: MariaDB 드라이버·파라미터 바인딩, python-dotenv 1.2.4: 루트 .env 읽기), PLAN.md. database.py는 루트 .env를 읽되 기존 환경변수 우선, 누락 시 변수 이름만 알림. init_db는 CREATE TABLE IF NOT EXISTS로 기존 테이블·데이터 유지. 실행: .venv/bin/python -m backend.init_db 1회차 "만들었습니다", 2회차 "이미 있습니다". DESCRIBE: id(PK, auto_increment), name varchar(50), category enum 기본 ETC, price_range enum 기본 MID, location varchar(100) 기본 '', memo varchar(500) 기본 '', visit_status enum 기본 WANT, rating tinyint NULL, visit_count 기본 0, last_visited_at date NULL, created_at 기본 current_timestamp(), utf8mb4_unicode_ci·InnoDB, CHECK(rating 1~5). 롤백 트랜잭션에서 이름만 INSERT 시 기본값 적용, rating=6·category=PIZZA 거절 확인(행 수 0 유지). 남은 오류 없음.
-- [ ] T11: API 메모리 저장을 DB로 교체. SQL은 파라미터 바인딩만 사용. 샘플 데이터는 다시 등록한다.
+- [x] T11: API 메모리 저장을 DB로 교체. SQL은 파라미터 바인딩만 사용. 샘플 데이터는 다시 등록한다.
   확인: 등록한 행을 SQL로 조회. API 재시작 후 데이터 유지. 이름 `'); DROP TABLE restaurants;--`가 글자 그대로 저장됨.
+  결과(2026-10-14): 변경 파일: backend/repository.py(메모리 → MariaDB, 함수 이름·동작 유지로 main.py와 API 계약 변경 없음), PLAN.md. 값은 모두 %s 바인딩, PATCH 컬럼은 name·location·memo 허용 목록만 SQL에 사용, 검색어의 %·_는 LIKE 이스케이프. 실행: 8001 API에 curl로 T06·T07 확인 재실행(등록 201·공백 제거, 빈 이름·PIZZA·rating=6 422, q·필터 AND, q=% / q=_ 는 글자 그대로 검색, PATCH 부분 수정·같은 값 재수정 200·{} 200·category 422·name=null 422·없는 id 404, DELETE 204·재삭제 404). database.py로 SQL 조회 시 등록·수정 행 확인. `'); DROP TABLE restaurants;--` 이름이 글자 그대로 저장되고 restaurants 테이블 유지. API 중지·재시작 후 4건 유지(5173 프록시 경유도 4건). 남은 오류 없음.
 ## 5장: 추천
 - [ ] T12: GET /api/recommendations/random 구현과 추천 화면. 조건(카테고리·가격대·방문 상태)에 맞는 후보 중 서버에서 무작위 1곳. (F09)
   확인: "일식" 조건 10회 추천 시 일식만 나옴. 후보 1곳이면 항상 그 식당. 후보 0곳이면 "조건에 맞는 식당이 없습니다".
