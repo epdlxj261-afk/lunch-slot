@@ -76,3 +76,44 @@
   border-bottom: 1px solid #ddd;
   overflow-wrap: anywhere;
 }
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.item-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.item-row button {
+  padding: 6px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.item-row button:disabled {
+  cursor: not-allowed;
+}
+
+.edit-form .error {
+  margin-top: 6px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

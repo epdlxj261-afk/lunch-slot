@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { loadRestaurants, saveRestaurants } from './storage.js'
+import RestaurantItem from './components/RestaurantItem.jsx'
 import './App.css'
 
 const NAME_MAX_LENGTH = 50
@@ -43,6 +44,34 @@ function App() {
     setRestaurants(next)
     setName('')
     setError('')
+  }
+
+  // id가 같은 식당의 이름만 바꾼다. 실패하면 오류 메시지, 성공하면 null을 돌려준다.
+  function handleUpdateName(id, newName) {
+    if (storageBroken) return '저장된 데이터를 읽을 수 없어 수정할 수 없습니다.'
+    const trimmed = newName.trim()
+    const message = validateName(trimmed)
+    if (message) return message
+    const next = restaurants.map((restaurant) =>
+      restaurant.id === id ? { ...restaurant, name: trimmed } : restaurant,
+    )
+    if (!saveRestaurants(next)) return '저장하지 못했습니다. 다시 시도하세요.'
+    setRestaurants(next)
+    return null
+  }
+
+  // 확인을 받은 뒤 id가 같은 식당만 삭제한다. 취소하면 아무것도 바꾸지 않는다.
+  function handleDelete(id) {
+    if (storageBroken) return
+    const target = restaurants.find((restaurant) => restaurant.id === id)
+    if (!target) return
+    if (!window.confirm(`"${target.name}"을(를) 삭제할까요?`)) return
+    const next = restaurants.filter((restaurant) => restaurant.id !== id)
+    if (!saveRestaurants(next)) {
+      setError('삭제하지 못했습니다. 다시 시도하세요.')
+      return
+    }
+    setRestaurants(next)
   }
 
   function handleReset() {
@@ -98,7 +127,13 @@ function App() {
         ) : (
           <ul className="restaurant-list">
             {restaurants.map((restaurant) => (
-              <li key={restaurant.id}>{restaurant.name}</li>
+              <RestaurantItem
+                key={restaurant.id}
+                restaurant={restaurant}
+                disabled={storageBroken}
+                onUpdateName={handleUpdateName}
+                onDelete={handleDelete}
+              />
             ))}
           </ul>
         )}
