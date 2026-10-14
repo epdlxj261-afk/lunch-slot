@@ -65,8 +65,9 @@ lunch-slot/
 - [x] T15: 최근 N일 방문 제외 옵션(exclude_days 1~30, 기본 3). (F12)
   확인: last_visited_at을 SQL로 오늘/3일 전/4일 전으로 바꾼 뒤 N=3이면 오늘·3일 전 식당은 안 나오고 4일 전 식당은 나올 수 있음. exclude_days=0, 31은 422.
   결과(2026-10-14): 변경 파일: backend/schemas.py(날짜 검사를 공용 IsoDate로 분리), repository.py(last_visited_at IS NULL OR < today-N 조건), main.py(exclude_days 1~30·today 쿼리, today 없으면 422), frontend/src/api.js, constants.js, components/Recommendation.jsx(제외 옵션·일수 입력, 범위 밖 값 요청 전 안내), App.css, PLAN.md. 실행: 시험용 카페 4곳을 만들고 SQL로 last_visited_at을 10-14(오늘)/10-11(3일 전)/10-10(4일 전)/NULL로 설정, 30회씩 추천: 제외 없음 4곳 모두, N=3 → 4일 전·미방문만, N=1 → 3일 전·4일 전·미방문, N=4·30 → 미방문만, VISITED+N=4 → 404. exclude_days=0·31·abc, today 누락, today=2026/10/14·2026-02-30·숫자 422. T14 방문 날짜 검사 회귀 확인. 가짜 fetch로 옵션 끔/켬 쿼리 확인. npm run lint(경고 없음)·npm run build 통과. 사용자가 화면에서 N=3 제외, 옵션 끔, 0·31 입력 안내를 확인. 확인 후 시험용 카페 4곳 삭제(전체 7건 유지). 남은 오류 없음.
-- [ ] T16: 입력 안전성·접속 정보 점검. dangerouslySetInnerHTML 사용 금지.
+- [x] T16: 입력 안전성·접속 정보 점검. dangerouslySetInnerHTML 사용 금지.
   확인: 이름·메모의 `<img src=x onerror=alert(1)>`가 글자로 표시. npm run build 후 grep -rn "DB_PASSWORD\|lunch_slot" frontend/dist frontend/src 결과 없음.
+  결과(2026-10-14): 점검만 수행, 코드 변경 없음(변경 파일: PLAN.md). frontend/src에 dangerouslySetInnerHTML·innerHTML·outerHTML·insertAdjacentHTML·document.write·eval·new Function 없음, import.meta.env·process.env 사용 없음, frontend/.env* 없음. npm run build 후 grep -rn "DB_PASSWORD\|lunch_slot" frontend/dist frontend/src 결과 없음(종료 코드 1). 추가로 DB_HOST·DB_USER·lunch_app·3306·mariadb·pymysql 없음, .env의 실제 비밀번호·사용자·DB 이름 값이 dist·src 16개 파일에 없음(값은 출력하지 않음). 이름·위치·메모에 HTML·스크립트 문자열을 넣은 시험용 식당을 API로 등록해 그대로 저장됨을 확인. 사용자가 화면에서 목록·수정 폼·추천 결과·직접 등록 시 모두 글자로 표시되고 알림 창이 뜨지 않음을 확인. 확인 후 시험용 식당 삭제(전체 7건). 남은 오류 없음.
 ## 6장: 서버 분리
 - [ ] T17: DB 서버 구성 후 App 서버에서 SELECT 1 확인. (한 대에서는 DB_HOST만 설정값으로 분리)
 - [ ] T18: App 서버 코드·가상환경·환경변수·systemd 구성. --reload 없이 실행.
