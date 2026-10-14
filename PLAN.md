@@ -33,8 +33,9 @@ lunch-slot/
 - [x] T05: API-SPEC.md 작성, FastAPI /api/health 구현.
   확인: curl localhost:8001/api/health 로 200과 status=ok.
   결과(2026-10-14): 변경 파일: API-SPEC.md, backend/main.py, backend/requirements.txt(fastapi 0.143.0, uvicorn[standard] 0.54.0), .gitignore(.venv/, __pycache__/) 신규, PLAN.md. 8000번은 다른 앱(Task Flow, /opt/task-flow)이 사용 중이라 사용자 결정으로 API 포트를 8001로 변경(T05 확인·T08 프록시·실행 기준 수정). API-SPEC에 exclude_days 미전달 시 제외 안 함, 최근 방문 제외의 오늘 기준은 브라우저가 보내는 today로 정함(사용자 결정). 실행: python3 -m venv .venv, .venv/bin/pip install -r backend/requirements.txt(Python 3.14 설치 문제 없음), .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 --reload. curl localhost:8001/api/health → 200, {"status":"ok"}, /openapi.json 제목이 "오늘 뭐 먹지? API"임을 확인. 남은 오류 없음.
-- [ ] T06: 메모리 기반 /api/restaurants GET과 POST. 서버에서도 이름·필드 검증.
+- [x] T06: 메모리 기반 /api/restaurants GET과 POST. 서버에서도 이름·필드 검증.
   확인: /docs에서 등록 후 조회. 빈 이름, category=PIZZA, rating=6은 422.
+  결과(2026-10-14): 변경 파일: backend/schemas.py·repository.py(신규), backend/main.py, PLAN.md. 이름·위치·메모는 공백 제거 후 길이 검사, 정의되지 않은 필드 거절, rating은 strict 정수 1~5. 실행: .venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 --reload. curl로 "  국밥  " → 201·"국밥"·기본값, 전체 항목 201, 50/100/500자 경계 201, 빈 이름·공백 이름·51자·이름 누락·name=123·PIZZA·CHEAP·DONE·rating 6/0/"3"/2.5·위치 101자·메모 501자·visit_count 전달 모두 422, GET 최신 등록순 확인. 사용자가 /docs에서 등록·조회와 빈 이름·PIZZA·rating=6의 422를 확인. 남은 오류 없음.
 - [ ] T07: PATCH(name, location, memo만 허용)·DELETE와 검색·필터(q, category, price_range, visit_status) 구현.
   확인: 미전달 필드 유지, PATCH에 category 전달 시 422, 없는 ID 404, 삭제 204. 필터 결과가 AND 조건과 일치.
 - [ ] T08: 프런트엔드 저장 처리를 API 호출로 교체. vite.config.js에 /api → 8001 프록시. storage.js 삭제.
