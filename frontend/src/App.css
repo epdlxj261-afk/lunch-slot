@@ -1,32 +1,84 @@
 .app {
-  max-width: 560px;
+  max-width: 640px;
   margin: 0 auto;
   padding: 32px 16px;
 }
 
-.register-form {
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  padding: 6px 8px;
+  min-width: 0;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
+.field {
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 8px;
+}
+
+.register-form {
   margin-bottom: 24px;
 }
 
-.register-row {
+.register-form fieldset {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+
+.register-form legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+.register-form .primary {
+  align-self: flex-start;
+  padding: 8px 20px;
+}
+
+.filter-bar {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  margin-bottom: 12px;
 }
 
-.register-row input {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 10px;
-  font: inherit;
-}
-
-.register-row button {
-  padding: 8px 16px;
-  font: inherit;
-  cursor: pointer;
+.filter-bar > button {
+  align-self: flex-start;
 }
 
 .error {
@@ -50,17 +102,6 @@
   margin: 0;
 }
 
-.storage-error button {
-  padding: 6px 12px;
-  font: inherit;
-  cursor: pointer;
-}
-
-.register-row button:disabled,
-.register-row input:disabled {
-  cursor: not-allowed;
-}
-
 .empty {
   color: #777;
 }
@@ -72,7 +113,7 @@
 }
 
 .restaurant-list li {
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid #ddd;
   overflow-wrap: anywhere;
 }
@@ -86,34 +127,40 @@
 .item-name {
   flex: 1;
   min-width: 0;
+  font-weight: 600;
 }
 
-.item-row input {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 8px;
-  font: inherit;
+.item-actions {
+  display: flex;
+  gap: 8px;
 }
 
-.item-row button {
-  padding: 6px 12px;
-  font: inherit;
-  cursor: pointer;
-}
-
-.item-row button:disabled {
-  cursor: not-allowed;
-}
-
-.edit-form .error {
+.item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin-top: 6px;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+.item-tags span {
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: #f1f1f1;
+  font-size: 0.85em;
+}
+
+.item-location,
+.item-memo {
+  margin: 6px 0 0;
+  color: #555;
+}
+
+.item-memo {
+  white-space: pre-wrap;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }

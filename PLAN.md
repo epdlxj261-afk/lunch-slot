@@ -26,8 +26,9 @@ lunch-slot/
 - [x] T03: 이름 수정, 삭제 확인. 모두 id 기준. (F04 이름, F05)
   확인: 같은 이름 두 곳 중 하나만 수정됨. 삭제 취소 시 유지. 빈 이름 수정 거절.
   결과(2026-10-14): 변경 파일: frontend/src/components/RestaurantItem.jsx(신규), src/App.jsx, src/App.css, PLAN.md. 수정·삭제 모두 id 기준, 저장 성공 시에만 화면 반영, 저장값 손상 시 차단. 실행: npm run lint·npm run build 통과. 브라우저에서 같은 이름 두 곳 중 하나만 수정(새로고침 후 유지), 삭제 취소 시 유지, 확인 시 해당 항목만 삭제, 공백·51자 수정 거절, 수정 취소 시 원래 이름 유지를 사용자가 확인. 남은 오류 없음.
-- [ ] T04: 등록 시 카테고리·가격대·위치·메모·방문 상태·평점 입력, 수정 시 위치·메모 추가, 이름 검색·필터. (F03, F04, F06, F07, F08)
+- [x] T04: 등록 시 카테고리·가격대·위치·메모·방문 상태·평점 입력, 수정 시 위치·메모 추가, 이름 검색·필터. (F03, F04, F06, F07, F08)
   확인: 이름만 등록 시 기타/1~2만 원/가보고 싶음/평점 없음. 수정 화면에는 이름·위치·메모만 있음. 검색+필터 AND 적용. 필터 중 수정·삭제가 정확한 항목에 적용.
+  결과(2026-10-14): 변경 파일: frontend/src/constants.js·validation.js·components/RegisterForm.jsx·components/FilterBar.jsx(신규), src/App.jsx·components/RestaurantItem.jsx·storage.js·App.css, PLAN.md. 이전 단계 저장 항목은 불러올 때 기본값으로 채우고, 잘못된 값(category=PIZZA, rating=6 등)은 손상으로 처리. 실행: npm run lint(경고 없음)·npm run build 통과, Node로 storage 기본값·손상 판정과 위치 100/101자·메모 500/501자 검사 확인. 브라우저에서 이름만 등록 시 기본값 표시, 전체 항목 등록·새로고침 유지, 수정 화면 이름·위치·메모만 표시, 검색+필터 AND, 필터 중 수정·삭제 정확한 항목 적용, 위치·메모 길이 초과 거절을 사용자가 확인. 남은 오류 없음.
 ## 3장: API
 - [ ] T05: API-SPEC.md 작성, FastAPI /api/health 구현.
   확인: curl localhost:8000/api/health 로 200과 status=ok.
