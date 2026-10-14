@@ -253,3 +253,14 @@ textarea:disabled {
   margin: 8px 0 0;
   color: #2e7d32;
 }
+
+.exclude-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.exclude-days {
+  width: 4.5em;
+}

@@ -1,8 +1,12 @@
-from fastapi import FastAPI, HTTPException, Response
+from typing import Annotated
+
+from fastapi import FastAPI, HTTPException, Query, Response
+from fastapi.exceptions import RequestValidationError
 
 from backend import repository
 from backend.schemas import (
     Category,
+    IsoDate,
     PriceRange,
     Restaurant,
     RestaurantCreate,
@@ -59,8 +63,24 @@ def random_recommendation(
     category: Category | None = None,
     price_range: PriceRange | None = None,
     visit_status: VisitStatus | None = None,
+    exclude_days: Annotated[int | None, Query(ge=1, le=30)] = None,
+    today: IsoDate | None = None,
 ):
-    restaurant = repository.random_restaurant(category, price_range, visit_status)
+    # 최근 방문 제외는 브라우저 로컬 날짜(today) 기준으로 계산하므로 함께 보내야 한다.
+    if exclude_days is not None and today is None:
+        raise RequestValidationError(
+            [
+                {
+                    "type": "missing",
+                    "loc": ("query", "today"),
+                    "msg": "exclude_days를 보낼 때 today(YYYY-MM-DD)가 필요합니다",
+                    "input": None,
+                }
+            ]
+        )
+    restaurant = repository.random_restaurant(
+        category, price_range, visit_status, exclude_days, today
+    )
     if restaurant is None:
         raise HTTPException(status_code=404, detail=NO_CANDIDATE)
     return restaurant

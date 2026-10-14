@@ -3,7 +3,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
 
 class Category(str, Enum):
@@ -36,6 +36,17 @@ Rating = Annotated[int, Field(ge=1, le=5, strict=True)]
 DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
+def _require_iso_date_string(value):
+    """YYYY-MM-DD 문자열만 통과시킨다. 숫자·시각 포함 값이 날짜로 바뀌지 않게 막는다."""
+    if not isinstance(value, str) or not DATE_PATTERN.fullmatch(value):
+        raise ValueError("날짜는 YYYY-MM-DD 형식이어야 합니다")
+    return value
+
+
+# 브라우저 로컬 날짜(YYYY-MM-DD). 형식 검사 후 실제 날짜인지(2026-02-30 거절) 확인한다.
+IsoDate = Annotated[date, BeforeValidator(_require_iso_date_string)]
+
+
 class RestaurantCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -65,21 +76,14 @@ class RestaurantUpdate(BaseModel):
 class VisitCreate(BaseModel):
     """추천 결과에서 "여기로 결정"을 눌렀을 때의 방문 기록.
 
-    visited_on은 브라우저 로컬 날짜(YYYY-MM-DD) 문자열만 받는다. 숫자 등이 날짜로 바뀌지 않게 먼저 형식을 검사한다.
+    visited_on은 브라우저 로컬 날짜(YYYY-MM-DD) 문자열만 받는다.
     rating을 보내지 않거나 null이면 기존 평점을 유지한다.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    visited_on: date
+    visited_on: IsoDate
     rating: Rating | None = None
-
-    @field_validator("visited_on", mode="before")
-    @classmethod
-    def _require_iso_date_string(cls, value):
-        if not isinstance(value, str) or not DATE_PATTERN.fullmatch(value):
-            raise ValueError("날짜는 YYYY-MM-DD 형식이어야 합니다")
-        return value
 
 
 class Restaurant(BaseModel):

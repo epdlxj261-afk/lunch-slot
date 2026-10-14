@@ -13,6 +13,8 @@ const FIELD_LABELS = {
   visit_status: '방문 상태',
   rating: '평점',
   visited_on: '방문 날짜',
+  exclude_days: '제외 일수',
+  today: '오늘 날짜',
 }
 
 export class ApiError extends Error {
@@ -92,12 +94,17 @@ export async function listRestaurants(filters) {
 }
 
 // 조건(카테고리·가격대·방문 상태)에 맞는 식당 1곳을 서버가 무작위로 고른다.
+// excludeDays가 있으면 today(브라우저 로컬 날짜) 기준 최근 N일 이내 방문한 식당을 뺀다.
 // 후보가 없으면 서버의 404 안내("조건에 맞는 식당이 없습니다")가 ApiError로 전달된다.
-export async function getRandomRecommendation(conditions) {
+export async function getRandomRecommendation(conditions, { excludeDays = null, today = null } = {}) {
   const params = new URLSearchParams()
   if (conditions.category) params.set('category', conditions.category)
   if (conditions.priceRange) params.set('price_range', conditions.priceRange)
   if (conditions.visitStatus) params.set('visit_status', conditions.visitStatus)
+  if (excludeDays !== null) {
+    params.set('exclude_days', String(excludeDays))
+    params.set('today', today)
+  }
   const query = params.toString()
   const item = await request(`/recommendations/random${query ? `?${query}` : ''}`)
   return fromServer(item)

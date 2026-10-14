@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { getRandomRecommendation, recordVisit } from '../api.js'
 import {
   CATEGORIES,
+  DEFAULT_EXCLUDE_DAYS,
+  EXCLUDE_DAYS_MAX,
+  EXCLUDE_DAYS_MIN,
   PRICE_RANGES,
   RATINGS,
   VISIT_STATUSES,
@@ -23,6 +26,13 @@ const SPIN_INTERVAL_MS = 80
 // 회전 중에 돌아가는 그림. 결과와 무관한 장식이며 실제 결과는 서버 응답으로 정해진다.
 const REEL_SYMBOLS = ['🍚', '🍜', '🍣', '🍝', '🍢', '☕', '🥟', '🍔']
 
+// 제외 일수 입력을 검사한다. 1~30 정수면 숫자, 아니면 null.
+function parseExcludeDays(text) {
+  if (!/^\d+$/.test(text.trim())) return null
+  const days = Number(text.trim())
+  return days >= EXCLUDE_DAYS_MIN && days <= EXCLUDE_DAYS_MAX ? days : null
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -31,6 +41,9 @@ function wait(ms) {
 // "여기로 결정"으로 방문을 기록하면 onVisited를 불러 목록을 갱신한다.
 function Recommendation({ onVisited }) {
   const [conditions, setConditions] = useState(EMPTY_CONDITIONS)
+  // 최근 방문 제외 옵션. 끄면 exclude_days를 보내지 않는다.
+  const [excludeRecent, setExcludeRecent] = useState(false)
+  const [excludeDaysText, setExcludeDaysText] = useState(String(DEFAULT_EXCLUDE_DAYS))
   const [result, setResult] = useState(null)
   const [message, setMessage] = useState('')
   const [spinning, setSpinning] = useState(false)
@@ -52,6 +65,12 @@ function Recommendation({ onVisited }) {
 
   async function handleSpin() {
     if (spinningRef.current) return
+    const excludeDays = excludeRecent ? parseExcludeDays(excludeDaysText) : null
+    if (excludeRecent && excludeDays === null) {
+      setResult(null)
+      setMessage(`제외 일수는 ${EXCLUDE_DAYS_MIN}~${EXCLUDE_DAYS_MAX} 사이의 정수로 입력하세요.`)
+      return
+    }
     spinningRef.current = true
     setSpinning(true)
     setMessage('')
@@ -64,7 +83,8 @@ function Recommendation({ onVisited }) {
     )
 
     // 요청은 회전 시작과 함께 한 번만 보내고, 응답과 1.5초가 모두 지나야 결과를 보여 준다.
-    const request = getRandomRecommendation(conditions).then(
+    const options = excludeDays === null ? {} : { excludeDays, today: localToday() }
+    const request = getRandomRecommendation(conditions, options).then(
       (restaurant) => ({ restaurant }),
       (err) => ({ error: err.message }),
     )
@@ -126,6 +146,28 @@ function Recommendation({ onVisited }) {
             </select>
           </div>
         ))}
+      </fieldset>
+      <fieldset className="exclude-row" disabled={spinning}>
+        <label>
+          <input
+            type="checkbox"
+            checked={excludeRecent}
+            onChange={(event) => setExcludeRecent(event.target.checked)}
+          />{' '}
+          최근
+        </label>
+        <input
+          type="number"
+          className="exclude-days"
+          aria-label="제외할 최근 방문 일수"
+          min={EXCLUDE_DAYS_MIN}
+          max={EXCLUDE_DAYS_MAX}
+          step={1}
+          value={excludeDaysText}
+          onChange={(event) => setExcludeDaysText(event.target.value)}
+          disabled={!excludeRecent}
+        />
+        <span>일 이내 방문한 곳 제외</span>
       </fieldset>
       <button
         type="button"

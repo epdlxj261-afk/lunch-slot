@@ -1,6 +1,6 @@
 import random
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, timedelta
 
 from backend.database import get_connection
 from backend.schemas import Category, PriceRange, Restaurant, RestaurantCreate, VisitStatus
@@ -91,9 +91,20 @@ def random_restaurant(
     category: Category | None = None,
     price_range: PriceRange | None = None,
     visit_status: VisitStatus | None = None,
+    exclude_days: int | None = None,
+    today: date | None = None,
 ) -> Restaurant | None:
-    """조건에 맞는 후보 중 1곳을 균등 무작위로 고른다. 후보가 없으면 None."""
+    """조건에 맞는 후보 중 1곳을 균등 무작위로 고른다. 후보가 없으면 None.
+
+    exclude_days가 있으면 today를 0일 전으로 보고 0~exclude_days일 전에 방문한 식당을 뺀다.
+    (N=3이면 3일 전 방문까지 제외, 4일 전 방문부터 후보. 미방문은 항상 후보)
+    """
     where, params = _where(None, category, price_range, visit_status)
+    if exclude_days is not None and today is not None:
+        cutoff = today - timedelta(days=exclude_days)
+        recent = "(last_visited_at IS NULL OR last_visited_at < %s)"
+        where = f"{where} AND {recent}" if where else f"WHERE {recent}"
+        params.append(cutoff)
     with _cursor() as cur:
         cur.execute(f"SELECT id FROM restaurants {where}", params)
         candidate_ids = [row["id"] for row in cur.fetchall()]

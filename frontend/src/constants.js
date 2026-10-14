@@ -25,6 +25,11 @@ export const VISIT_STATUSES = [
 
 export const RATINGS = [1, 2, 3, 4, 5]
 
+// 최근 방문 제외 일수(N). 옵션을 켜면 기본값 3, 1~30만 허용한다.
+export const DEFAULT_EXCLUDE_DAYS = 3
+export const EXCLUDE_DAYS_MIN = 1
+export const EXCLUDE_DAYS_MAX = 30
+
 export const DEFAULT_CATEGORY = 'ETC'
 export const DEFAULT_PRICE_RANGE = 'MID'
 export const DEFAULT_VISIT_STATUS = 'WANT'

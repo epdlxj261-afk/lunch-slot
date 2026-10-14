@@ -62,8 +62,9 @@ lunch-slot/
 - [x] T14: POST /api/restaurants/{id}/visits(body: visited_on, 선택 rating)와 "여기로 결정" 버튼·평점 선택. 날짜는 브라우저 로컬 날짜. (F11)
   확인: 결정 시 가봤음·방문 1회·오늘 날짜 표시. 다시 결정하면 2회. 평점 4 선택 시 4로 저장, 평점 미선택 시 기존 평점 유지, rating=6은 422. API 재시작 후 유지.
   결과(2026-10-14): 변경 파일: backend/schemas.py(VisitCreate), repository.py(record_visit: UPDATE 1회, rating은 COALESCE로 미지정 시 유지), main.py, frontend/src/api.js, constants.js(localToday·visitSummary), components/Recommendation.jsx·RestaurantItem.jsx, App.jsx, App.css, PLAN.md. 처음 visited_on을 strict date로 두었더니 FastAPI가 본문을 Python 값으로 검증해 정상 문자열도 422가 됨 → YYYY-MM-DD 문자열 사전 검사 후 일반 변환으로 수정. 실행: 시험용 식당(평점 2)에 curl로 1회차 VISITED·1회·2026-10-14·평점 2 유지, 2회차 2회, rating 4 → 4, rating null → 4 유지, rating 6·"4", 2026/10/14·2026-13-01·2026-02-30·숫자·시각 포함·누락·추가 필드 422, 없는 id 404 확인 후 시험용 식당 삭제. npm run lint(경고 없음)·npm run build 통과. 사용자가 화면에서 결정 시 가봤음·방문 1회·오늘 날짜, 재결정 2회, 평점 4 저장·미선택 시 유지를 확인. API 중지·재시작 전후 목록(방문 기록 포함 7건) 동일. 남은 오류 없음.
-- [ ] T15: 최근 N일 방문 제외 옵션(exclude_days 1~30, 기본 3). (F12)
+- [x] T15: 최근 N일 방문 제외 옵션(exclude_days 1~30, 기본 3). (F12)
   확인: last_visited_at을 SQL로 오늘/3일 전/4일 전으로 바꾼 뒤 N=3이면 오늘·3일 전 식당은 안 나오고 4일 전 식당은 나올 수 있음. exclude_days=0, 31은 422.
+  결과(2026-10-14): 변경 파일: backend/schemas.py(날짜 검사를 공용 IsoDate로 분리), repository.py(last_visited_at IS NULL OR < today-N 조건), main.py(exclude_days 1~30·today 쿼리, today 없으면 422), frontend/src/api.js, constants.js, components/Recommendation.jsx(제외 옵션·일수 입력, 범위 밖 값 요청 전 안내), App.css, PLAN.md. 실행: 시험용 카페 4곳을 만들고 SQL로 last_visited_at을 10-14(오늘)/10-11(3일 전)/10-10(4일 전)/NULL로 설정, 30회씩 추천: 제외 없음 4곳 모두, N=3 → 4일 전·미방문만, N=1 → 3일 전·4일 전·미방문, N=4·30 → 미방문만, VISITED+N=4 → 404. exclude_days=0·31·abc, today 누락, today=2026/10/14·2026-02-30·숫자 422. T14 방문 날짜 검사 회귀 확인. 가짜 fetch로 옵션 끔/켬 쿼리 확인. npm run lint(경고 없음)·npm run build 통과. 사용자가 화면에서 N=3 제외, 옵션 끔, 0·31 입력 안내를 확인. 확인 후 시험용 카페 4곳 삭제(전체 7건 유지). 남은 오류 없음.
 - [ ] T16: 입력 안전성·접속 정보 점검. dangerouslySetInnerHTML 사용 금지.
   확인: 이름·메모의 `<img src=x onerror=alert(1)>`가 글자로 표시. npm run build 후 grep -rn "DB_PASSWORD\|lunch_slot" frontend/dist frontend/src 결과 없음.
 ## 6장: 서버 분리
