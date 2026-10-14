@@ -201,3 +201,42 @@ textarea:disabled {
   font-size: 1.4em;
   font-weight: 700;
 }
+
+.recommendation fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.slot-reel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+  border-radius: 6px;
+  background: #fff8e1;
+  overflow: hidden;
+  font-size: 2.4em;
+}
+
+.slot-reel span {
+  animation: slot-drop 80ms linear;
+}
+
+@keyframes slot-drop {
+  from {
+    transform: translateY(-60%);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot-reel span {
+    animation: none;
+  }
+}
