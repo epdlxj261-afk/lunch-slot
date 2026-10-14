@@ -69,7 +69,8 @@ lunch-slot/
   확인: 이름·메모의 `<img src=x onerror=alert(1)>`가 글자로 표시. npm run build 후 grep -rn "DB_PASSWORD\|lunch_slot" frontend/dist frontend/src 결과 없음.
   결과(2026-10-14): 점검만 수행, 코드 변경 없음(변경 파일: PLAN.md). frontend/src에 dangerouslySetInnerHTML·innerHTML·outerHTML·insertAdjacentHTML·document.write·eval·new Function 없음, import.meta.env·process.env 사용 없음, frontend/.env* 없음. npm run build 후 grep -rn "DB_PASSWORD\|lunch_slot" frontend/dist frontend/src 결과 없음(종료 코드 1). 추가로 DB_HOST·DB_USER·lunch_app·3306·mariadb·pymysql 없음, .env의 실제 비밀번호·사용자·DB 이름 값이 dist·src 16개 파일에 없음(값은 출력하지 않음). 이름·위치·메모에 HTML·스크립트 문자열을 넣은 시험용 식당을 API로 등록해 그대로 저장됨을 확인. 사용자가 화면에서 목록·수정 폼·추천 결과·직접 등록 시 모두 글자로 표시되고 알림 창이 뜨지 않음을 확인. 확인 후 시험용 식당 삭제(전체 7건). 남은 오류 없음.
 ## 6장: 서버 분리
-- [ ] T17: DB 서버 구성 후 App 서버에서 SELECT 1 확인. (한 대에서는 DB_HOST만 설정값으로 분리)
+- [x] T17: DB 서버 구성 후 App 서버에서 SELECT 1 확인. (한 대에서는 DB_HOST만 설정값으로 분리)
+  결과(2026-10-14): 별도 서버 접속 정보가 없어 사용자 결정으로 서버 한 대(이 머신)에서 진행. 변경 파일: .env.example(서버 분리 시 DB_HOST·계정 설정 주석), PLAN.md. backend 코드에 DB 주소·포트·이름 고정값 없음(grep), 접속값은 .env 또는 환경변수에서만 읽음. 실행: backend.database.get_connection으로 SELECT 1 → 성공(lunch_app@localhost, lunch_slot). DB_HOST만 환경변수로 바꿔 실행 시 localhost 성공, 127.0.0.2·db.invalid는 접속 실패로 DB_HOST 값대로 대상이 바뀜을 확인. API GET /api/restaurants 200. 실제 DB 서버 분리(bind-address·App 서버 IP 계정)는 서버 준비 후 진행 필요. 남은 오류 없음.
 - [ ] T18: App 서버 코드·가상환경·환경변수·systemd 구성. --reload 없이 실행.
   확인: App에서 /api/health 응답.
 - [ ] T19: Web 서버 Nginx와 정적 파일(frontend/dist)·/api 프록시 구성. deploy/nginx/lunch-slot.conf 작성.
