@@ -4,6 +4,7 @@
 # - /opt/lunch-slot/.env가 없을 때만 프로젝트 .env를 복사한다(기존 값은 덮어쓰지 않음, 내용은 출력하지 않음).
 # - 다시 실행하면 코드와 의존성을 갱신하고 서비스를 재시작한다.
 # 사용법(프로젝트 루트에서): sudo bash deploy/setup_app_server.sh
+# 같은 서버에서 Nginx가 8080을 쓰고 있었다면 setup_web_server.sh(8081)를 먼저 실행해 8080을 비운다.
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
@@ -50,4 +51,4 @@ systemctl enable "$SERVICE" >/dev/null
 systemctl restart "$SERVICE"
 sleep 2
 systemctl --no-pager --lines=0 status "$SERVICE" || true
-echo "확인: curl -s localhost:8001/api/health"
+echo "확인: curl -s 127.0.0.1:8080/api/health"

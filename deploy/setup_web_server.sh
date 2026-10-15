@@ -52,4 +52,4 @@ if ! nginx -t; then
 fi
 [[ -n "$backup" ]] && rm -f "$backup"
 systemctl reload nginx
-echo "완료: http://localhost:8080 (API 확인: curl -s localhost:8080/api/health)"
+echo "완료: http://127.0.0.1:8081 (API 확인: curl -s 127.0.0.1:8081/api/health)"
