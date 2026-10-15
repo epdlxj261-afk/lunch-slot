@@ -1,4 +1,5 @@
 // 백엔드 API(/api) 호출. 서버 필드(snake_case)와 화면 필드(camelCase)는 여기서만 변환한다.
+// 로그인 상태는 서버가 보내는 HttpOnly 세션 쿠키로 유지한다. 이 코드는 쿠키·비밀번호를 저장하지 않는다.
 
 const BASE_URL = '/api'
 
@@ -15,6 +16,8 @@ const FIELD_LABELS = {
   visited_on: '방문 날짜',
   exclude_days: '제외 일수',
   today: '오늘 날짜',
+  username: '아이디',
+  password: '비밀번호',
 }
 
 export class ApiError extends Error {
@@ -22,6 +25,13 @@ export class ApiError extends Error {
     super(message)
     this.status = status
   }
+}
+
+// 로그인이 필요한 API가 401을 받으면(세션 만료·로그아웃) 호출할 함수. App이 등록한다.
+let unauthorizedHandler = null
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = handler
 }
 
 // 422 응답의 첫 번째 오류에서 필드 이름을 찾아 한국어 안내로 바꾼다.
@@ -52,6 +62,10 @@ async function request(path, options = {}) {
   }
 
   if (response.ok) return body
+  // 로그인·가입 실패의 401은 폼에서 안내하므로 로그인 화면 전환은 그 밖의 API에서만 한다.
+  if (response.status === 401 && !path.startsWith('/auth/') && unauthorizedHandler) {
+    unauthorizedHandler()
+  }
   // 개발 서버 프록시는 API가 꺼져 있으면 본문 없는 500을 돌려준다.
   if ([502, 503, 504].includes(response.status) || (response.status === 500 && body === null)) {
     throw new ApiError(CONNECTION_ERROR_MESSAGE, response.status)
@@ -147,4 +161,33 @@ export async function recordVisit(id, { visitedOn, rating }) {
 
 export async function deleteRestaurant(id) {
   await request(`/restaurants/${id}`, { method: 'DELETE' })
+}
+
+// 현재 로그인한 사용자. 로그인하지 않았거나 세션이 만료됐으면 null.
+export async function getCurrentUser() {
+  try {
+    return await request('/auth/me')
+  } catch (err) {
+    if (err.status === 401) return null
+    throw err
+  }
+}
+
+// 가입하면 서버가 바로 로그인 세션 쿠키를 보낸다.
+export async function signup({ username, password }) {
+  return request('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  })
+}
+
+export async function login({ username, password }) {
+  return request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  })
+}
+
+export async function logout() {
+  await request('/auth/logout', { method: 'POST' })
 }

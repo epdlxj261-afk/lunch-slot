@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react'
-import { createRestaurant, deleteRestaurant, listRestaurants, updateRestaurant } from './api.js'
+import {
+  createRestaurant,
+  deleteRestaurant,
+  getCurrentUser,
+  listRestaurants,
+  logout,
+  setUnauthorizedHandler,
+  updateRestaurant,
+} from './api.js'
 import { EMPTY_FILTERS } from './constants.js'
 import { validateEditable } from './validation.js'
 import RegisterForm from './components/RegisterForm.jsx'
 import FilterBar from './components/FilterBar.jsx'
 import RestaurantItem from './components/RestaurantItem.jsx'
 import Recommendation from './components/Recommendation.jsx'
+import AuthForm from './components/AuthForm.jsx'
 import './App.css'
 
 function hasActiveFilters(filters) {
@@ -25,7 +34,8 @@ function trimEditable(values) {
   }
 }
 
-function App() {
+// 로그인한 사용자의 식당 화면. 목록·등록·추천은 서버가 이 사용자의 식당만 돌려준다.
+function RestaurantPage({ user, onLogout }) {
   const [restaurants, setRestaurants] = useState([])
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [loading, setLoading] = useState(true)
@@ -105,7 +115,15 @@ function App() {
 
   return (
     <main className="app">
-      <h1>오늘 뭐 먹지?</h1>
+      <header className="app-header">
+        <h1>오늘 뭐 먹지?</h1>
+        <div className="account">
+          <span>{user.username}</span>
+          <button type="button" onClick={onLogout}>
+            로그아웃
+          </button>
+        </div>
+      </header>
 
       <Recommendation onVisited={reload} />
 
@@ -146,6 +164,107 @@ function App() {
         )}
       </section>
     </main>
+  )
+}
+
+const SESSION_EXPIRED_MESSAGE = '로그인이 필요합니다. 다시 로그인하세요.'
+
+// 로그인 상태를 관리한다. 비밀번호·세션 값은 저장하지 않고 서버의 세션 쿠키와 /api/auth/me로 확인한다.
+function App() {
+  // undefined: 확인 중, null: 로그인 안 됨, 객체: 로그인한 사용자
+  const [user, setUser] = useState(undefined)
+  const [checkError, setCheckError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [logoutError, setLogoutError] = useState('')
+  const [checkKey, setCheckKey] = useState(0)
+
+  // 새로고침해도 세션 쿠키가 유효하면 로그인 상태를 이어 간다.
+  useEffect(() => {
+    let ignore = false
+    getCurrentUser()
+      .then((current) => {
+        if (ignore) return
+        setUser(current)
+        setCheckError('')
+      })
+      .catch((err) => {
+        if (!ignore) setCheckError(err.message)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [checkKey])
+
+  // 식당 API가 401을 받으면(세션 만료·다른 탭에서 로그아웃) 로그인 화면으로 돌아간다.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null)
+      setNotice(SESSION_EXPIRED_MESSAGE)
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [])
+
+  function handleAuthenticated(nextUser) {
+    setNotice('')
+    setLogoutError('')
+    setUser(nextUser)
+  }
+
+  async function handleLogout() {
+    try {
+      await logout()
+    } catch (err) {
+      // 서버에 연결하지 못하면 세션이 남아 있으므로 로그인 상태를 유지하고 안내한다.
+      setLogoutError(err.message)
+      return
+    }
+    setLogoutError('')
+    setNotice('')
+    setUser(null)
+  }
+
+  if (checkError) {
+    return (
+      <main className="app">
+        <h1>오늘 뭐 먹지?</h1>
+        <div className="load-error" role="alert">
+          <p>{checkError}</p>
+          <button type="button" onClick={() => setCheckKey((key) => key + 1)}>
+            다시 시도
+          </button>
+        </div>
+      </main>
+    )
+  }
+
+  if (user === undefined) {
+    return (
+      <main className="app">
+        <h1>오늘 뭐 먹지?</h1>
+        <p className="empty">불러오는 중...</p>
+      </main>
+    )
+  }
+
+  if (user === null) {
+    return (
+      <main className="app">
+        <h1>오늘 뭐 먹지?</h1>
+        <AuthForm onAuthenticated={handleAuthenticated} notice={notice} />
+      </main>
+    )
+  }
+
+  // 계정이 바뀌면 key로 화면 상태(목록·필터·추천 결과)를 새로 시작한다.
+  return (
+    <>
+      {logoutError && (
+        <p className="error app-banner" role="alert">
+          {logoutError}
+        </p>
+      )}
+      <RestaurantPage key={user.id} user={user} onLogout={handleLogout} />
+    </>
   )
 }
 

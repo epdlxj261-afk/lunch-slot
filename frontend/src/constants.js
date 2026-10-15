@@ -1,6 +1,10 @@
 export const NAME_MAX_LENGTH = 50
 export const LOCATION_MAX_LENGTH = 100
 export const MEMO_MAX_LENGTH = 500
+// 아이디: 공백 제거·소문자 변환 후 영문 소문자·숫자·밑줄 4~20자. 비밀번호: 8~64자(공백 포함).
+export const USERNAME_PATTERN = /^[a-z0-9_]{4,20}$/
+export const PASSWORD_MIN_LENGTH = 8
+export const PASSWORD_MAX_LENGTH = 64
 
 export const CATEGORIES = [
   { value: 'KOREAN', label: '한식' },

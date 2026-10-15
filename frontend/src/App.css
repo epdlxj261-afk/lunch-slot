@@ -264,3 +264,50 @@ textarea:disabled {
 .exclude-days {
   width: 4.5em;
 }
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.app-header h1 {
+  margin: 0.67em 0;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+
+.app-banner {
+  max-width: 640px;
+  margin: 16px auto 0;
+  padding: 0 16px;
+}
+
+.auth-form {
+  max-width: 360px;
+}
+
+.auth-notice {
+  margin: 0;
+  color: #555;
+}
+
+.auth-switch {
+  margin: 0;
+  color: #555;
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+}
