@@ -83,10 +83,27 @@ lunch-slot/
 - [x] T21: 포트 재배치. 127.0.0.1:8080은 FastAPI(systemd)가 직접 사용하고, 화면(Nginx)은 127.0.0.1:8081에서 제공하며 /api를 8080으로 전달한다. 80번(task-flow)은 그대로 둔다(사용자 결정). 개발 실행 기준(uvicorn 8001·Vite 프록시)은 유지.
   확인: 8080 /api/health 200이고 응답이 uvicorn(화면 없음). 8081 화면 200·/api 경유 등록·조회. 80번 task-flow 200 유지.
   결과(2026-10-15): 사용자 요청은 "127.0.0.1로 접속 + 8080은 FastAPI만"이었으나 80번 task-flow 유지 결정으로 화면은 8081 사용. 변경 파일: deploy/systemd/lunch-slot-api.service(API_PORT 8001→8080), deploy/nginx/lunch-slot.conf(listen 8080→8081, upstream 127.0.0.1:8080), deploy/setup_app_server.sh·setup_web_server.sh(확인 주소·실행 순서 안내), PLAN.md. 실행: 임시 메인 설정으로 nginx -t 통과 후 사용자가 sudo bash deploy/setup_web_server.sh → sudo bash deploy/setup_app_server.sh 순서로 실행(먼저 Web만 적용된 상태에서 8081 /api 502를 확인, App 적용 후 해소). 확인: lunch-slot-api active·NRestarts=0, 프로세스 lunchslot·--port 8080·--reload 없음, 8080은 127.0.0.1에서만 대기, 8080 /api/health 200·/ 404(server=uvicorn, 화면 없음)·/docs 200, 8081 / 200·/api/health 200(server=nginx), CSP·nosniff 헤더 유지, 80번 task-flow 200, 8001 대기 없음, 배포 설정·서비스 파일·백엔드 코드·정적 파일이 저장소와 동일. 8081 경유 점검 스크립트 14/14 PASS(등록·검증·필터 중 수정·추천·후보 0곳·방문 기록·최근 방문 제외·HTML 문자열) 후 시험 데이터 3건 삭제(7건 유지). 남은 오류 없음.
+- [x] T22: 화면을 http://127.0.0.1(80번)에서 제공. 같은 서버의 task-flow는 사용자 결정으로 중지(task-flow-api 중지·자동 시작 해제, Nginx sites-enabled 연결만 제거, 코드·sites-available 원본은 유지). lunch-slot Nginx는 80 default_server + 8081, FastAPI는 8080 유지.
+  확인: WSL과 Windows에서 127.0.0.1 → lunch-slot 화면, /api/health 200. 127.0.0.1:8081 화면 유지. task-flow-api inactive·disabled, 8000 대기 없음.
+  결과(2026-10-15): 배경: Windows 브라우저에서 127.0.0.1:8081이 열리지 않음 → Windows 127.0.0.1:8081을 VS Code 자동 포트 포워딩(원격 8080 FastAPI)이 차지해 404(server=uvicorn), WSL 중계(wslrelay)는 ::1만 잡음. 저장소 밖 ~/.vscode-server/data/Machine/settings.json에 80·8080·8081 onAutoForward=ignore 추가, 사용자가 창 다시 로드로 포워딩 해제. 이후 사용자 결정으로 task-flow 중지·80번 사용. 변경 파일: deploy/nginx/lunch-slot.conf(listen 80 default_server 추가, 8081 유지), deploy/setup_web_server.sh(완료 안내 주소), PLAN.md(T22 추가, 로그인 작업 T23~T27로 번호 이동), PRD.md(로그인 시작 작업 번호). 실행: 임시 설정 nginx -t 통과 후 사용자가 sudo systemctl disable --now task-flow-api, sudo rm /etc/nginx/sites-enabled/task-flow, sudo bash deploy/setup_web_server.sh, nginx stop·10초·start(중계 재등록) 실행. 확인: task-flow-api inactive·disabled, 8000 대기 없음, sites-available/task-flow 원본 유지, 설정·정적 파일 저장소와 동일. WSL: 127.0.0.1 / ·SPA 경로·/api/health 200, :8081 200, :8080 /api/health 200·/ 404. Windows(curl.exe): 127.0.0.1·localhost 80 / 200(제목 "오늘 뭐 먹지?")·/api/health 200, 127.0.0.1:8081·localhost:8081 200, 리스너 80·8080·8081 모두 wslrelay(VS Code 없음). 80번 경유 점검 스크립트 14/14 PASS 후 시험 데이터 3건 삭제(7건 유지), CSP·nosniff 유지. 남은 오류 없음.
+
+## 7장: 회원가입·로그인
+결정(2026-10-15, 사용자): 사용자별 데이터 분리, 서버 세션 + HttpOnly 쿠키, 아이디 + 비밀번호(실제 개인정보 없음), 로그인 도입 전 식당 7건은 user_id 없이 보관(어느 사용자에게도 표시 안 함, 삭제 안 함). 비밀번호 해시는 표준 라이브러리 hashlib.scrypt로 새 패키지 없음.
+- [ ] T23: API-SPEC.md에 인증 계약 추가, DB에 users·sessions 테이블과 restaurants.user_id(NULL 허용, users 외래키) 추가. init_db는 기존 테이블·데이터를 지우지 않고 없는 테이블·칼럼만 추가한다. (F13~F15 데이터)
+  확인: init_db 2회 실행해도 오류 없음. DESCRIBE users·sessions·restaurants. username 고유 제약. 기존 7건 유지·user_id NULL.
+- [ ] T24: POST /api/auth/signup·login·logout, GET /api/auth/me. 비밀번호 scrypt 해시, 세션 값은 DB에 해시만 저장, 쿠키 HttpOnly·SameSite=Lax·Path=/api·7일. (F13, F14)
+  확인: 가입 201·쿠키 발급·me 200, 중복 아이디(대소문자 무시) 409, 아이디 3자·21자·한글·비밀번호 7자·65자 422, 틀린 비밀번호와 없는 아이디는 같은 401 문구, 로그아웃 후 같은 쿠키로 me 401, 만료 세션 401. DB에 비밀번호·세션 원문 없음.
+- [ ] T25: 식당·추천·방문 API에 로그인 필수와 사용자별 범위 적용. 등록 시 user_id는 세션 사용자로 서버가 정한다. (F15)
+  확인: 쿠키 없이 모든 식당 API 401. A·B 두 계정에서 각자 목록에 자기 식당만, B가 A의 id로 PATCH·DELETE·visits → 404이고 A의 행 그대로, 추천 후보도 자기 식당만. 기존 7건은 누구에게도 안 보이고 DB에 남음. 기존 검증(422 등) 회귀 없음.
+- [ ] T26: 화면에 회원가입·로그인·로그아웃 추가. 로그인 전에는 로그인 화면만, API 401이면 로그인 화면으로 이동. 비밀번호·세션을 localStorage에 저장하지 않는다. (F13~F15)
+  확인: 가입 후 바로 목록 화면, 로그아웃 후 로그인 화면, 새로고침 시 로그인 유지, 틀린 비밀번호 안내, 다른 계정 로그인 시 다른 목록. npm run lint·build 통과.
+- [ ] T27: 배포 반영(setup_app_server.sh·setup_web_server.sh 재실행)과 PRD 완료 기준 전체 재점검.
+  확인: 8081 화면에서 가입·로그인·등록·추천·로그아웃, App 재시작 후 로그인·데이터 유지, 기존 완료 기준 회귀 없음, DB·빌드 결과물에 비밀번호·세션 원문과 DB 접속 정보 없음.
 
 ## 실행 기준
 T01~T04: cd frontend && npm install && npm run dev -- --host 127.0.0.1 --port 5173
 T05~T16: 가상환경에서 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8001 --reload (T08부터 프론트도 함께 실행)
+T22 이후 운영: 화면 http://127.0.0.1 (또는 :8081), API(FastAPI) 127.0.0.1:8080. T23~T26은 위 개발 실행(8001·5173)으로 확인하고 T27에서 운영에 반영한다.
 DB 확인: mariadb -u lunch_app -p lunch_slot
 실제 존재하는 파일을 확인한 뒤 명령을 실행한다.
 ## 기록
