@@ -105,31 +105,39 @@ def me(user: Annotated[User, Depends(current_user)]):
 
 @app.get("/api/restaurants", response_model=list[Restaurant])
 def list_restaurants(
+    user: Annotated[User, Depends(current_user)],
     q: str | None = None,
     category: Category | None = None,
     price_range: PriceRange | None = None,
     visit_status: VisitStatus | None = None,
 ):
-    return repository.list_restaurants(q, category, price_range, visit_status)
+    return repository.list_restaurants(user.id, q, category, price_range, visit_status)
 
 
 @app.post("/api/restaurants", response_model=Restaurant, status_code=201)
-def create_restaurant(data: RestaurantCreate):
-    return repository.create_restaurant(data)
+def create_restaurant(data: RestaurantCreate, user: Annotated[User, Depends(current_user)]):
+    # 등록한 사용자는 본문이 아닌 세션 사용자로 서버가 정한다.
+    return repository.create_restaurant(user.id, data)
 
 
 @app.patch("/api/restaurants/{restaurant_id}", response_model=Restaurant)
-def update_restaurant(restaurant_id: int, data: RestaurantUpdate):
+def update_restaurant(
+    restaurant_id: int, data: RestaurantUpdate, user: Annotated[User, Depends(current_user)]
+):
     # 보낸 필드만 바꾸고 보내지 않은 필드는 유지한다.
-    restaurant = repository.update_restaurant(restaurant_id, data.model_dump(exclude_unset=True))
+    restaurant = repository.update_restaurant(
+        user.id, restaurant_id, data.model_dump(exclude_unset=True)
+    )
     if restaurant is None:
         raise HTTPException(status_code=404, detail=NOT_FOUND)
     return restaurant
 
 
 @app.post("/api/restaurants/{restaurant_id}/visits", response_model=Restaurant)
-def record_visit(restaurant_id: int, data: VisitCreate):
-    restaurant = repository.record_visit(restaurant_id, data.visited_on, data.rating)
+def record_visit(
+    restaurant_id: int, data: VisitCreate, user: Annotated[User, Depends(current_user)]
+):
+    restaurant = repository.record_visit(user.id, restaurant_id, data.visited_on, data.rating)
     if restaurant is None:
         raise HTTPException(status_code=404, detail=NOT_FOUND)
     return restaurant
@@ -137,6 +145,7 @@ def record_visit(restaurant_id: int, data: VisitCreate):
 
 @app.get("/api/recommendations/random", response_model=Restaurant)
 def random_recommendation(
+    user: Annotated[User, Depends(current_user)],
     category: Category | None = None,
     price_range: PriceRange | None = None,
     visit_status: VisitStatus | None = None,
@@ -156,7 +165,7 @@ def random_recommendation(
             ]
         )
     restaurant = repository.random_restaurant(
-        category, price_range, visit_status, exclude_days, today
+        user.id, category, price_range, visit_status, exclude_days, today
     )
     if restaurant is None:
         raise HTTPException(status_code=404, detail=NO_CANDIDATE)
@@ -164,7 +173,7 @@ def random_recommendation(
 
 
 @app.delete("/api/restaurants/{restaurant_id}", status_code=204)
-def delete_restaurant(restaurant_id: int):
-    if not repository.delete_restaurant(restaurant_id):
+def delete_restaurant(restaurant_id: int, user: Annotated[User, Depends(current_user)]):
+    if not repository.delete_restaurant(user.id, restaurant_id):
         raise HTTPException(status_code=404, detail=NOT_FOUND)
     return Response(status_code=204)

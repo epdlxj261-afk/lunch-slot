@@ -47,13 +47,18 @@ def _escape_like(text: str) -> str:
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def _fetch_one(cur, restaurant_id: int) -> Restaurant | None:
-    cur.execute(f"SELECT {COLUMNS} FROM restaurants WHERE id = %s", (restaurant_id,))
+def _fetch_one(cur, user_id: int, restaurant_id: int) -> Restaurant | None:
+    """user_id 사용자의 식당만 찾는다. 다른 사용자의 식당 id는 없는 id와 같게 None."""
+    cur.execute(
+        f"SELECT {COLUMNS} FROM restaurants WHERE id = %s AND user_id = %s",
+        (restaurant_id, user_id),
+    )
     row = cur.fetchone()
     return Restaurant(**row) if row else None
 
 
 def _where(
+    user_id: int,
     q: str | None,
     category: Category | None,
     price_range: PriceRange | None,
@@ -62,9 +67,10 @@ def _where(
     """조건을 AND로 묶은 WHERE 절과 파라미터를 만든다. 빈 값이나 None은 조건에서 뺀다.
 
     q는 공백 제거 후 이름에 포함되는지 비교한다(테이블 정렬 규칙상 대소문자 구분 없음).
+    항상 user_id 사용자의 식당만 대상으로 한다(user_id가 없는 로그인 도입 전 식당은 제외된다).
     """
-    conditions = []
-    params = []
+    conditions = ["user_id = %s"]
+    params = [user_id]
     keyword = (q or "").strip()
     if keyword:
         conditions.append("name LIKE %s")
@@ -78,18 +84,18 @@ def _where(
     if visit_status is not None:
         conditions.append("visit_status = %s")
         params.append(visit_status.value)
-    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-    return where, params
+    return f"WHERE {' AND '.join(conditions)}", params
 
 
 def list_restaurants(
+    user_id: int,
     q: str | None = None,
     category: Category | None = None,
     price_range: PriceRange | None = None,
     visit_status: VisitStatus | None = None,
 ) -> list[Restaurant]:
     """조건을 모두 만족하는(AND) 식당을 최신 등록순(created_at 내림차순, 같으면 id 내림차순)으로 돌려준다."""
-    where, params = _where(q, category, price_range, visit_status)
+    where, params = _where(user_id, q, category, price_range, visit_status)
     with _cursor() as cur:
         cur.execute(
             f"SELECT {COLUMNS} FROM restaurants {where} ORDER BY created_at DESC, id DESC",
@@ -100,6 +106,7 @@ def list_restaurants(
 
 
 def random_restaurant(
+    user_id: int,
     category: Category | None = None,
     price_range: PriceRange | None = None,
     visit_status: VisitStatus | None = None,
@@ -111,27 +118,27 @@ def random_restaurant(
     exclude_days가 있으면 today를 0일 전으로 보고 0~exclude_days일 전에 방문한 식당을 뺀다.
     (N=3이면 3일 전 방문까지 제외, 4일 전 방문부터 후보. 미방문은 항상 후보)
     """
-    where, params = _where(None, category, price_range, visit_status)
+    where, params = _where(user_id, None, category, price_range, visit_status)
     if exclude_days is not None and today is not None:
         cutoff = today - timedelta(days=exclude_days)
-        recent = "(last_visited_at IS NULL OR last_visited_at < %s)"
-        where = f"{where} AND {recent}" if where else f"WHERE {recent}"
+        where = f"{where} AND (last_visited_at IS NULL OR last_visited_at < %s)"
         params.append(cutoff)
     with _cursor() as cur:
         cur.execute(f"SELECT id FROM restaurants {where}", params)
         candidate_ids = [row["id"] for row in cur.fetchall()]
         if not candidate_ids:
             return None
-        return _fetch_one(cur, random.choice(candidate_ids))
+        return _fetch_one(cur, user_id, random.choice(candidate_ids))
 
 
-def create_restaurant(data: RestaurantCreate) -> Restaurant:
+def create_restaurant(user_id: int, data: RestaurantCreate) -> Restaurant:
     with _cursor() as cur:
         cur.execute(
             "INSERT INTO restaurants "
-            "(name, category, price_range, location, memo, visit_status, rating) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "(user_id, name, category, price_range, location, memo, visit_status, rating) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
             (
+                user_id,
                 data.name,
                 data.category.value,
                 data.price_range.value,
@@ -141,43 +148,47 @@ def create_restaurant(data: RestaurantCreate) -> Restaurant:
                 data.rating,
             ),
         )
-        return _fetch_one(cur, cur.lastrowid)
+        return _fetch_one(cur, user_id, cur.lastrowid)
 
 
-def update_restaurant(restaurant_id: int, changes: dict) -> Restaurant | None:
-    """changes에 담긴 필드만 바꾼다. 없는 id면 None."""
+def update_restaurant(user_id: int, restaurant_id: int, changes: dict) -> Restaurant | None:
+    """changes에 담긴 필드만 바꾼다. 없는 id나 다른 사용자의 식당이면 None."""
     columns = [column for column in UPDATABLE_COLUMNS if column in changes]
     with _cursor() as cur:
         if columns:
             assignments = ", ".join(f"{column} = %s" for column in columns)
             cur.execute(
-                f"UPDATE restaurants SET {assignments} WHERE id = %s",
-                [changes[column] for column in columns] + [restaurant_id],
+                f"UPDATE restaurants SET {assignments} WHERE id = %s AND user_id = %s",
+                [changes[column] for column in columns] + [restaurant_id, user_id],
             )
         # 값이 그대로면 UPDATE의 영향 행 수가 0일 수 있으므로 존재 여부는 다시 조회해 판단한다.
-        return _fetch_one(cur, restaurant_id)
+        return _fetch_one(cur, user_id, restaurant_id)
 
 
-def record_visit(restaurant_id: int, visited_on: date, rating: int | None) -> Restaurant | None:
+def record_visit(
+    user_id: int, restaurant_id: int, visited_on: date, rating: int | None
+) -> Restaurant | None:
     """방문 상태를 VISITED로, 방문 횟수를 1 증가, 마지막 방문일을 visited_on으로 바꾼다.
 
-    rating이 None이면 기존 평점을 유지한다. 없는 id면 None.
+    rating이 None이면 기존 평점을 유지한다. 없는 id나 다른 사용자의 식당이면 None.
     """
     with _cursor() as cur:
         cur.execute(
             "UPDATE restaurants SET visit_status = %s, visit_count = visit_count + 1, "
-            "last_visited_at = %s, rating = COALESCE(%s, rating) WHERE id = %s",
-            (VisitStatus.VISITED.value, visited_on, rating, restaurant_id),
+            "last_visited_at = %s, rating = COALESCE(%s, rating) WHERE id = %s AND user_id = %s",
+            (VisitStatus.VISITED.value, visited_on, rating, restaurant_id, user_id),
         )
         if cur.rowcount == 0:
             return None
-        return _fetch_one(cur, restaurant_id)
+        return _fetch_one(cur, user_id, restaurant_id)
 
 
-def delete_restaurant(restaurant_id: int) -> bool:
-    """삭제했으면 True, 없는 id면 False."""
+def delete_restaurant(user_id: int, restaurant_id: int) -> bool:
+    """삭제했으면 True, 없는 id나 다른 사용자의 식당이면 False."""
     with _cursor() as cur:
-        cur.execute("DELETE FROM restaurants WHERE id = %s", (restaurant_id,))
+        cur.execute(
+            "DELETE FROM restaurants WHERE id = %s AND user_id = %s", (restaurant_id, user_id)
+        )
         return cur.rowcount > 0
 
 
