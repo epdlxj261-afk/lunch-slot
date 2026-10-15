@@ -89,8 +89,9 @@ lunch-slot/
 
 ## 7장: 회원가입·로그인
 결정(2026-10-15, 사용자): 사용자별 데이터 분리, 서버 세션 + HttpOnly 쿠키, 아이디 + 비밀번호(실제 개인정보 없음), 로그인 도입 전 식당 7건은 user_id 없이 보관(어느 사용자에게도 표시 안 함, 삭제 안 함). 비밀번호 해시는 표준 라이브러리 hashlib.scrypt로 새 패키지 없음.
-- [ ] T23: API-SPEC.md에 인증 계약 추가, DB에 users·sessions 테이블과 restaurants.user_id(NULL 허용, users 외래키) 추가. init_db는 기존 테이블·데이터를 지우지 않고 없는 테이블·칼럼만 추가한다. (F13~F15 데이터)
+- [x] T23: API-SPEC.md에 인증 계약 추가, DB에 users·sessions 테이블과 restaurants.user_id(NULL 허용, users 외래키) 추가. init_db는 기존 테이블·데이터를 지우지 않고 없는 테이블·칼럼만 추가한다. (F13~F15 데이터)
   확인: init_db 2회 실행해도 오류 없음. DESCRIBE users·sessions·restaurants. username 고유 제약. 기존 7건 유지·user_id NULL.
+  결과(2026-10-15): 변경 파일: backend/init_db.py(users·sessions 생성, restaurants에 user_id 칼럼·idx_restaurants_user(user_id, created_at, id)·fk_restaurants_user를 information_schema로 확인 후 없을 때만 ALTER로 추가), API-SPEC.md(인증 절: 쿠키 ls_session HttpOnly·SameSite=Lax·Path=/api·7일 고정 만료, User 객체, 아이디·비밀번호 규칙, signup 201/409/422·login 200/401/422·logout 204·me 200/401, 로그인 필요 범위와 다른 사용자 id 404, 오류 표에 401·409, 응답에 user_id 미포함), PLAN.md. 설계: users.username VARCHAR(20) 고유·CHECK(^[a-z0-9_]{4,20}$), password_hash VARCHAR(255), sessions.token_hash CHAR(64) ascii PK(SHA-256)·user_id FK(ON DELETE CASCADE)·expires_at 인덱스, restaurants.user_id NULL·FK RESTRICT(회원 탈퇴 없음). 실행: 변경 전 기존 7건을 스크래치 폴더에 JSON 백업 후 .venv/bin/python -m backend.init_db 2회 → 1회차 users·sessions 생성·user_id·인덱스·외래키 추가, 2회차 모두 "이미 있습니다". DESCRIBE 3개 테이블과 외래키(restaurants RESTRICT, sessions CASCADE) 확인. 기존 7건(id 2·3·4·5·7·8·9)은 user_id NULL이고 나머지 값이 백업과 동일. 되돌리는 트랜잭션에서 정상 아이디 허용, 대문자 중복(1062)·3자·한글(4025 CHECK)·없는 사용자의 세션·식당(1452) 거절, user_id 없는 식당 허용 → 되돌린 뒤 users 0·sessions 0·restaurants 7. 운영 API(80번) 목록 200·7건, 응답에 user_id 없음(저장소가 칼럼을 명시해 조회). 남은 오류 없음.
 - [ ] T24: POST /api/auth/signup·login·logout, GET /api/auth/me. 비밀번호 scrypt 해시, 세션 값은 DB에 해시만 저장, 쿠키 HttpOnly·SameSite=Lax·Path=/api·7일. (F13, F14)
   확인: 가입 201·쿠키 발급·me 200, 중복 아이디(대소문자 무시) 409, 아이디 3자·21자·한글·비밀번호 7자·65자 422, 틀린 비밀번호와 없는 아이디는 같은 401 문구, 로그아웃 후 같은 쿠키로 me 401, 만료 세션 401. DB에 비밀번호·세션 원문 없음.
 - [ ] T25: 식당·추천·방문 API에 로그인 필수와 사용자별 범위 적용. 등록 시 user_id는 세션 사용자로 서버가 정한다. (F15)
