@@ -2,8 +2,17 @@ import random
 from contextlib import contextmanager
 from datetime import date, timedelta
 
+import pymysql
+
 from backend.database import get_connection
-from backend.schemas import Category, PriceRange, Restaurant, RestaurantCreate, VisitStatus
+from backend.schemas import (
+    Category,
+    PriceRange,
+    Restaurant,
+    RestaurantCreate,
+    User,
+    VisitStatus,
+)
 
 # MariaDB 저장소. SQL에 값을 문자열로 이어 붙이지 않고 모두 %s 파라미터로 넘긴다.
 
@@ -11,6 +20,9 @@ COLUMNS = (
     "id, name, category, price_range, location, memo, visit_status, rating, "
     "visit_count, last_visited_at, created_at"
 )
+# 세션 유지 기간. 만료 시각은 DB 시계(NOW()) 기준으로 계산한다.
+SESSION_DAYS = 7
+DUPLICATE_ENTRY = 1062
 # PATCH로 바꿀 수 있는 컬럼. 컬럼 이름은 파라미터로 넘길 수 없으므로 이 목록에 있는 것만 SQL에 쓴다.
 UPDATABLE_COLUMNS = ("name", "location", "memo")
 
@@ -167,3 +179,58 @@ def delete_restaurant(restaurant_id: int) -> bool:
     with _cursor() as cur:
         cur.execute("DELETE FROM restaurants WHERE id = %s", (restaurant_id,))
         return cur.rowcount > 0
+
+
+def create_user(username: str, password_hash: str) -> User | None:
+    """사용자를 만든다. 이미 있는 아이디면(고유 제약 위반) None."""
+    try:
+        with _cursor() as cur:
+            cur.execute(
+                "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
+                (username, password_hash),
+            )
+            return User(id=cur.lastrowid, username=username)
+    except pymysql.err.IntegrityError as error:
+        if error.args and error.args[0] == DUPLICATE_ENTRY:
+            return None
+        raise
+
+
+def find_user_credentials(username: str) -> tuple[User, str] | None:
+    """로그인 확인용으로 사용자와 저장된 비밀번호 해시를 돌려준다. 없으면 None."""
+    with _cursor() as cur:
+        cur.execute(
+            "SELECT id, username, password_hash FROM users WHERE username = %s", (username,)
+        )
+        row = cur.fetchone()
+    if row is None:
+        return None
+    return User(id=row["id"], username=row["username"]), row["password_hash"]
+
+
+def create_session(token_hash: str, user_id: int) -> None:
+    """세션을 저장한다. 만료된 세션은 이때 함께 정리한다."""
+    with _cursor() as cur:
+        cur.execute("DELETE FROM sessions WHERE expires_at <= NOW()")
+        cur.execute(
+            "INSERT INTO sessions (token_hash, user_id, expires_at) "
+            "VALUES (%s, %s, NOW() + INTERVAL %s DAY)",
+            (token_hash, user_id, SESSION_DAYS),
+        )
+
+
+def find_session_user(token_hash: str) -> User | None:
+    """만료되지 않은 세션의 사용자. 없거나 만료됐으면 None."""
+    with _cursor() as cur:
+        cur.execute(
+            "SELECT u.id, u.username FROM sessions s JOIN users u ON u.id = s.user_id "
+            "WHERE s.token_hash = %s AND s.expires_at > NOW()",
+            (token_hash,),
+        )
+        row = cur.fetchone()
+    return User(**row) if row else None
+
+
+def delete_session(token_hash: str) -> None:
+    with _cursor() as cur:
+        cur.execute("DELETE FROM sessions WHERE token_hash = %s", (token_hash,))

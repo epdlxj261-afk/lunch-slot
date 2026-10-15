@@ -86,6 +86,46 @@ class VisitCreate(BaseModel):
     rating: Rating | None = None
 
 
+def _normalize_username(value):
+    """아이디는 앞뒤 공백 제거 후 소문자로 바꾼 뒤 검사한다. 문자열이 아니면 그대로 넘겨 422가 되게 한다.
+
+    StringConstraints의 pattern은 strip·to_lower 전 값에 적용되므로 변환을 먼저 따로 한다.
+    """
+    return value.strip().lower() if isinstance(value, str) else value
+
+
+# 대소문자만 다른 아이디는 같은 아이디다.
+Username = Annotated[
+    str, BeforeValidator(_normalize_username), StringConstraints(pattern=r"^[a-z0-9_]{4,20}$")
+]
+# 비밀번호는 공백도 비밀번호의 일부로 보아 앞뒤 공백을 제거하지 않는다.
+Password = Annotated[str, StringConstraints(min_length=8, max_length=64)]
+# 로그인은 형식을 따로 알리지 않고 일치 여부만 본다. 지나치게 긴 값만 422로 거절한다.
+LoginUsername = Annotated[
+    str, BeforeValidator(_normalize_username), StringConstraints(min_length=1, max_length=64)
+]
+LoginPassword = Annotated[str, StringConstraints(min_length=1, max_length=64)]
+
+
+class SignupRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: Username
+    password: Password
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: LoginUsername
+    password: LoginPassword
+
+
+class User(BaseModel):
+    id: int
+    username: str
+
+
 class Restaurant(BaseModel):
     id: int
     name: str
